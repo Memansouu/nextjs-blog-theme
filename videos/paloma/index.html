@@ -1,0 +1,769 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Paloma</title>
+<style>
+@font-face { font-family: 'Bodoni Moda'; src: url(fonts/bodoni-moda-latin-400-normal.woff2) format('woff2'); font-weight: 400; }
+html, body { margin: 0; width: 1080px; height: 1080px; overflow: hidden; background: #F3ECE6; }
+#stage { position: relative; width: 1080px; height: 1080px; overflow: hidden; }
+canvas { position: absolute; left: 0; top: 0; }
+.t { position: absolute; left: 0; top: 0; color: #2B2422; font-family: 'Inter', sans-serif; white-space: nowrap; }
+.serif { font-family: 'Bodoni Moda', serif; font-weight: 400; }
+#intro .h { font-size: 92px; line-height: 1; letter-spacing: -1px; }
+#intro .s { font-size: 30px; line-height: 1.25; color: #8A7B74; margin-top: 16px; font-weight: 400; }
+#hdr { font-size: 34px; left: 64px; top: 52px; }
+#ctr { font-size: 24px; font-weight: 500; color: #8A7B74; top: 62px; left: 0; width: 1016px; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+#lab { left: 744px; }
+#lab .in { transform: translateY(-50%); }
+#lab .nm { font-size: 38px; font-weight: 500; line-height: 1.1; }
+#lab .val { line-height: 0.95; margin-top: 6px; }
+#lab .num { font-size: 138px; font-weight: 600; letter-spacing: -5px; font-variant-numeric: tabular-nums; }
+#lab .unit { font-size: 48px; font-weight: 500; margin-left: 12px; }
+#lab .sub { font-size: 30px; color: #8A7B74; margin-top: 10px; }
+#lead { position: absolute; left: 0; top: 0; height: 2px; background: #2B2422; }
+#lead::after { content: ''; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 5px; background: #2B2422; }
+#fin { left: 64px; top: 92px; }
+#fin .h { font-size: 112px; line-height: 1; letter-spacing: -1px; }
+#fin .rule { height: 2px; background: #2B2422; width: 300px; margin: 34px 0 30px; transform-origin: left center; }
+#fin .ln { font-size: 30px; line-height: 1; margin-bottom: 22px; }
+#fin .ln b { font-weight: 600; display: inline-block; width: 92px; font-variant-numeric: tabular-nums; }
+#flash { position: absolute; inset: 0; background: #FFFDFB; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="1080" height="1080"></canvas>
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <filter id="fIntro" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur id="bIntro" stdDeviation="0 0"/></filter>
+      <filter id="fLab" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur id="bLab" stdDeviation="0 0"/></filter>
+      <filter id="fCtr" x="-20%" y="-100%" width="140%" height="300%"><feGaussianBlur id="bCtr" stdDeviation="0 0"/></filter>
+      <filter id="fFin" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur id="bFin" stdDeviation="0 0"/></filter>
+    </defs>
+  </svg>
+  <div id="intro" class="t"><div class="h serif">Paloma</div><div class="s">Tequila &amp;<br>grapefruit highball</div></div>
+  <div id="hdr" class="t serif">Paloma</div>
+  <div id="ctr" class="t"></div>
+  <div id="lead"></div>
+  <div id="lab" class="t"><div class="in"><div class="nm"></div><div class="val"><span class="num"></span><span class="unit"></span></div><div class="sub"></div></div></div>
+  <div id="fin" class="t">
+    <div class="h serif">Paloma</div>
+    <div class="rule"></div>
+    <div class="ln"><b>50 ml</b>Tequila blanco</div>
+    <div class="ln"><b>15 ml</b>Fresh lime juice</div>
+    <div class="ln"><b>10 ml</b>Agave syrup</div>
+    <div class="ln"><b>60 ml</b>Grapefruit juice</div>
+    <div class="ln"><b>60 ml</b>Soda water</div>
+  </div>
+  <div id="flash"></div>
+</div>
+<script>
+// ---------- time grid ----------
+const BPM = 100, BEAT = 60 / BPM, BAR = BEAT * 4, DUR = 30;
+const FIN_T = BAR * 10.5;        // finale title
+const CAM_T = BAR * 9;           // camera starts easing in
+
+// ---------- math ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const expoOut = x => x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / (1 - Math.pow(2, -10));
+const expoIn = x => x <= 0 ? 0 : x >= 1 ? 1 : (Math.pow(2, 10 * x - 10) - Math.pow(2, -10)) / (1 - Math.pow(2, -10));
+const expoInOut = x => x <= 0 ? 0 : x >= 1 ? 1 : x < 0.5 ? expoIn(2 * x) / 2 : 0.5 + expoOut(2 * x - 1) / 2;
+// damped spring step response, t in seconds since release
+function spring(t, f = 2.2, z = 0.5) {
+  if (t <= 0) return 0;
+  const w = 2 * Math.PI * f, wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t));
+}
+function erf(x) {
+  const s = Math.sign(x); x = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return s * y;
+}
+const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
+function rng(seed) { // mulberry32
+  return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const rgba = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(c[3] * a)})`;
+
+// ---------- recipe ----------
+const STEPS = [
+  { kind: 'ice',     T: BAR * 1, name: 'Ice', val: '4', unit: 'cubes', sub: 'large, clear' },
+  { kind: 'pour',    T: BAR * 2, name: 'Tequila blanco',   ml: 50, sub: '1¾ oz', col: [244, 236, 212, 0.30], stream: [250, 248, 240, 0.75] },
+  { kind: 'pour',    T: BAR * 3, name: 'Fresh lime juice', ml: 15, sub: '½ oz',  col: [206, 220, 136, 0.58], stream: [214, 226, 150, 0.85] },
+  { kind: 'pour',    T: BAR * 4, name: 'Agave syrup',      ml: 10, sub: '⅓ oz',  col: [226, 162, 66, 0.72],  stream: [222, 160, 70, 0.92] },
+  { kind: 'pour',    T: BAR * 5, name: 'Grapefruit juice', ml: 60, sub: '2 oz',  col: [238, 106, 98, 0.84],  stream: [240, 112, 102, 0.92] },
+  { kind: 'pour',    T: BAR * 6, name: 'Soda water',       ml: 60, sub: '2 oz',  col: [252, 252, 250, 0.08], stream: [255, 255, 255, 0.7], soda: true },
+  { kind: 'stir',    T: BAR * 7, name: 'Stir', val: '4', unit: 'turns', sub: 'bar spoon, gently' },
+  { kind: 'garnish', T: BAR * 8, name: 'Grapefruit', val: '1', unit: 'wedge', sub: 'on the rim' },
+];
+const POURS = STEPS.filter(s => s.kind === 'pour');
+const STIR = STEPS[6], GARN = STEPS[7];
+const POUR_LEN = 1.3;
+
+// ---------- glass geometry (world px) ----------
+const GX = 540, TOP_Y = 380, BOT_Y = 900, TOP_HW = 158, BOT_HW = 132, WALL = 8, INNER_BOT = 852, ML_PX = 1.95;
+const ER = 0.14; // ellipse ry / rx
+const outerHW = y => lerp(BOT_HW, TOP_HW, (BOT_Y - y) / (BOT_Y - TOP_Y));
+const innerHW = y => outerHW(y) - WALL;
+
+// ---------- liquid state ----------
+const pourFrac = x => x <= 0 ? 0 : x >= POUR_LEN ? 1 : 1 - Math.pow(1 - x / POUR_LEN, 2);
+const flowRate = x => (x <= 0 || x >= POUR_LEN) ? 0 : (2 / POUR_LEN) * (1 - x / POUR_LEN);
+function bands(t) {
+  const out = []; let acc = 0;
+  for (const p of POURS) {
+    const v = p.ml * pourFrac(t - p.T);
+    if (v > 0.01) { out.push({ a: acc, b: acc + v, col: p.col }); acc += v; }
+  }
+  return { list: out, V: acc };
+}
+const mixAmt = t => expoInOut((t - STIR.T + 0.1) / 2.1);
+function colorAt(u, B, sigma) {
+  let w = 0, c = [0, 0, 0, 0];
+  for (const b of B.list) {
+    const k = Phi((b.b - u) / sigma) - Phi((b.a - u) / sigma);
+    w += k; const ka = k * b.col[3];
+    for (let i = 0; i < 3; i++) c[i] += b.col[i] * ka; c[3] += ka;
+  }
+  if (w < 1e-6 || c[3] < 1e-6) return [255, 255, 255, 0];
+  return [c[0] / c[3], c[1] / c[3], c[2] / c[3], c[3] / w];
+}
+function mixedColor(B) {
+  let c = [0, 0, 0, 0];
+  if (B.V <= 0) return c;
+  for (const b of B.list) { const k = (b.b - b.a) / B.V, ka = k * b.col[3]; for (let i = 0; i < 3; i++) c[i] += b.col[i] * ka; c[3] += ka; }
+  return c[3] > 0 ? [c[0] / c[3], c[1] / c[3], c[2] / c[3], c[3]] : c;
+}
+const levelOf = V => INNER_BOT - V * ML_PX;
+
+// ---------- ice ----------
+const ICE = [
+  { x: 484, y: 801, r: -7, s: 104 }, { x: 598, y: 806, r: 9, s: 100 },
+  { x: 514, y: 699, r: 14, s: 98 },  { x: 590, y: 702, r: -11, s: 102 },
+];
+const ICE_FALL = 0.34;
+function stirPhase(t) { return 2 * Math.PI * (t - STIR.T) / BEAT; }
+function stirAmp(t) { return clamp((t - (STIR.T - 0.3)) / 0.3) * (1 - clamp((t - (STIR.T + 1.95)) / 0.3)); }
+function icePose(i, t, levelY) {
+  const c = ICE[i], Ti = STEPS[0].T + i * BEAT;
+  if (t < Ti - ICE_FALL) return null;
+  let x = c.x, y = c.y, r = c.r;
+  if (t < Ti) {
+    const g = 2 * (c.y + 140) / (ICE_FALL * ICE_FALL), d = Ti - t;
+    y = c.y - 0.5 * g * d * d; r = c.r + 70 * d / ICE_FALL; x = c.x + (i % 2 ? 14 : -14) * d / ICE_FALL;
+  } else {
+    const d = t - Ti;
+    y = c.y - 16 * Math.exp(-9 * d) * Math.abs(Math.sin(15 * d));
+    r = c.r + 7 * Math.exp(-6 * d) * Math.sin(19 * d);
+    // upper cubes landing nudge the lower row
+    if (i < 2) for (let j = 2; j < 4; j++) { const dj = t - (STEPS[0].T + j * BEAT); if (dj > 0) y += 4 * Math.exp(-12 * dj) * Math.sin(20 * dj); }
+  }
+  // buoyancy: the stack floats once the liquid is deep enough
+  const depth = INNER_BOT - levelY, thr = 0.88 * 2 * 102;
+  const lift = depth > thr ? depth - thr : 0;
+  y -= lift;
+  if (lift > 0) { y += 2.2 * Math.sin(2 * Math.PI * 0.45 * t + i * 1.9); r += 1.5 * Math.sin(2 * Math.PI * 0.35 * t + i); }
+  const a = stirAmp(t);
+  if (a > 0) { const ph = stirPhase(t); x += a * 9 * Math.sin(ph + i * 1.7); r += a * 6 * Math.sin(ph * 0.5 + i); y += a * 3 * Math.cos(ph + i); }
+  return { x, y, r, s: c.s };
+}
+
+// ---------- jigger ----------
+const JIG_REST = { x: 588, y: 290 }, JIG_START = { x: 1000, y: -190 }, JIG_END = { x: 1040, y: -230 };
+const JIG_ANG = -104 * Math.PI / 180;
+function jigPose(p, t) {
+  const T = p.T; const a = t - T;
+  if (a < -0.62 || a > 2.05) return null;
+  let x, y, ang;
+  if (a < 1.55) {
+    const e = spring(a + 0.62, 1.9, 0.82);
+    x = lerp(JIG_START.x, JIG_REST.x, e); y = lerp(JIG_START.y, JIG_REST.y, e);
+  } else {
+    const e = expoIn((a - 1.55) / 0.5);
+    x = lerp(JIG_REST.x, JIG_END.x, e); y = lerp(JIG_REST.y, JIG_END.y, e);
+  }
+  const tiltIn = expoOut((a + 0.34) / 0.32), tiltOut = expoInOut((a - 1.22) / 0.34);
+  ang = JIG_ANG * tiltIn * (1 - tiltOut);
+  return { x, y, ang };
+}
+
+// ---------- spoon ----------
+function spoonPose(t) {
+  const a = t - STIR.T;
+  if (a < -0.62 || a > 2.4) return null;
+  let dy;
+  if (a < 1.95) dy = -760 * (1 - spring(a + 0.62, 1.6, 0.85));
+  else dy = -900 * expoIn((a - 1.95) / 0.42);
+  const amp = stirAmp(t), ph = stirPhase(t);
+  return { tipX: GX + 72 * amp * Math.cos(ph) - 6, tipY: 772 + 10 * Math.sin(ph) + dy, topX: GX + 70 + 26 * amp * Math.cos(ph), topY: -40 + dy, front: Math.sin(ph) > 0 };
+}
+
+// ---------- garnish ----------
+const GAR_REST = { x: 690, y: 382, r: -16 };
+function garnPose(t) {
+  const a = t - GARN.T, F = 0.38;
+  if (a < -F) return null;
+  if (a < 0) { const g = 2 * (GAR_REST.y + 220) / (F * F); return { x: GAR_REST.x + 30 * (-a / F), y: GAR_REST.y - 0.5 * g * a * a, r: GAR_REST.r - 40 * (-a / F) }; }
+  return { x: GAR_REST.x, y: GAR_REST.y - 10 * Math.exp(-8 * a) * Math.abs(Math.sin(13 * a)), r: GAR_REST.r + 12 * Math.exp(-5 * a) * Math.sin(16 * a) };
+}
+
+// ---------- camera ----------
+function camera(t) {
+  const e = expoInOut((t - CAM_T) / 3.4);
+  const s = 1 + 0.4 * e, c = { x: 540, y: 600 }, d = { x: lerp(540, 650, e), y: lerp(600, 610, e) };
+  return { s, c, d, e };
+}
+
+// ---------- motion-blurred drawing ----------
+// samples the pose over the last 1/60 s; ghosts follow speed and direction
+function blurDraw(ctx, poseAt, t, draw, minPx = 5) {
+  const p0 = poseAt(t); if (!p0) return;
+  const p1 = poseAt(t - 1 / 60) || p0;
+  const dist = Math.hypot((p0.x ?? p0.tipX) - (p1.x ?? p1.tipX), (p0.y ?? p0.tipY) - (p1.y ?? p1.tipY));
+  if (dist < minPx) { draw(p0); return; }
+  const n = Math.min(10, Math.ceil(dist / 4));
+  const ga = ctx.globalAlpha;
+  for (let k = 0; k < n; k++) {
+    const p = poseAt(t - (k / n) * (1 / 60)); if (!p) continue;
+    ctx.globalAlpha = ga * (1.6 / n) * (1 - k / n * 0.5);
+    draw(p);
+  }
+  ctx.globalAlpha = ga;
+}
+
+// ---------- canvas painters ----------
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+
+function glassPath(c) {
+  c.beginPath();
+  c.moveTo(GX - TOP_HW, TOP_Y);
+  c.lineTo(GX - BOT_HW, BOT_Y);
+  c.ellipse(GX, BOT_Y, BOT_HW, BOT_HW * ER, 0, Math.PI, 0, true);
+  c.lineTo(GX + TOP_HW, TOP_Y);
+  c.ellipse(GX, TOP_Y, TOP_HW, TOP_HW * ER, 0, 0, Math.PI, true);
+  c.closePath();
+}
+function interiorPath(c, topY) {
+  const hb = innerHW(INNER_BOT), ht = innerHW(topY);
+  c.beginPath();
+  c.moveTo(GX - ht, topY);
+  c.lineTo(GX - hb, INNER_BOT);
+  c.ellipse(GX, INNER_BOT, hb, hb * ER, 0, Math.PI, 0, true);
+  c.lineTo(GX + ht, topY);
+  c.ellipse(GX, topY, ht, ht * ER, 0, 0, Math.PI, false);
+  c.closePath();
+}
+
+function drawBackground(c, mix, V) {
+  // seamless: wall then table, soft-focus horizon
+  const HZ = 690;
+  let g = c.createLinearGradient(0, -400, 0, HZ);
+  g.addColorStop(0, '#EBE0D8'); g.addColorStop(1, '#F6EFEA');
+  c.fillStyle = g; c.fillRect(-800, -800, 2700, HZ + 800);
+  g = c.createLinearGradient(0, HZ, 0, 1300);
+  g.addColorStop(0, '#EADFD6'); g.addColorStop(0.45, '#F0E7E0'); g.addColorStop(1, '#F6F0EB');
+  c.fillStyle = g; c.fillRect(-800, HZ, 2700, 1400);
+  g = c.createLinearGradient(0, HZ - 26, 0, HZ + 26);
+  g.addColorStop(0, 'rgba(246,239,234,0)'); g.addColorStop(0.5, 'rgba(240,232,225,0.9)'); g.addColorStop(1, 'rgba(234,223,214,0)');
+  c.fillStyle = g; c.fillRect(-800, HZ - 26, 2700, 52);
+  // key light falling on the backdrop behind the glass
+  g = c.createRadialGradient(470, 470, 0, 470, 470, 560);
+  g.addColorStop(0, 'rgba(255,253,250,0.55)'); g.addColorStop(1, 'rgba(255,253,250,0)');
+  c.fillStyle = g; c.fillRect(-800, -800, 2700, 2700);
+  // contact shadow, cast forward-right
+  c.save(); c.filter = 'blur(10px)';
+  g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+  g.addColorStop(0, 'rgba(96,66,54,0.30)'); g.addColorStop(1, 'rgba(96,66,54,0)');
+  c.setTransform(c.getTransform().translate(600, 912).scale(200, 30));
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, 1, 0, Math.PI * 2); c.fill();
+  c.restore();
+  c.save(); c.filter = 'blur(3px)';
+  c.fillStyle = 'rgba(80,56,46,0.28)'; c.beginPath(); c.ellipse(GX + 4, BOT_Y + 2, BOT_HW + 4, BOT_HW * ER + 3, 0, 0, Math.PI * 2); c.fill();
+  c.restore();
+  // caustic: light focused through the liquid onto the table
+  if (V > 1) {
+    const col = mix, k = clamp(V / 120);
+    c.save(); c.filter = 'blur(9px)';
+    const cg = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+    cg.addColorStop(0, `rgba(${Math.min(255, col[0] + 30)},${Math.min(255, col[1] + 40)},${Math.min(255, col[2] + 40)},${0.55 * k * clamp(col[3] * 2)})`);
+    cg.addColorStop(1, 'rgba(255,240,230,0)');
+    c.setTransform(c.getTransform().translate(632, 930).scale(110, 15));
+    c.fillStyle = cg; c.beginPath(); c.arc(0, 0, 1, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+}
+
+function drawGlassBack(c) {
+  c.save();
+  glassPath(c); c.fillStyle = 'rgba(255,255,255,0.10)'; c.fill();
+  // back rim arc
+  c.lineWidth = 2; c.strokeStyle = 'rgba(150,130,120,0.35)';
+  c.beginPath(); c.ellipse(GX, TOP_Y, TOP_HW, TOP_HW * ER, 0, Math.PI, 0); c.stroke();
+  c.lineWidth = 1.5; c.strokeStyle = 'rgba(255,255,255,0.8)';
+  c.beginPath(); c.ellipse(GX, TOP_Y + 3, TOP_HW - 5, (TOP_HW - 5) * ER, 0, Math.PI, 0); c.stroke();
+  // inner base (seen through the glass)
+  const hb = innerHW(INNER_BOT);
+  c.strokeStyle = 'rgba(140,120,110,0.28)'; c.lineWidth = 1.5;
+  c.beginPath(); c.ellipse(GX, INNER_BOT, hb, hb * ER, 0, Math.PI, 0); c.stroke();
+  c.restore();
+}
+
+function drawLiquid(c, t, B, levelY) {
+  if (B.V < 0.05) return;
+  const m = mixAmt(t), sigma = 3 + m * 420;
+  c.save();
+  interiorPath(c, levelY); c.clip();
+  // vertical colour from the stacked ingredients, blended by stirring
+  const g = c.createLinearGradient(0, INNER_BOT + 16, 0, levelY);
+  const N = 30;
+  for (let i = 0; i < N; i++) {
+    const f = i / (N - 1), u = f * B.V;
+    const col = colorAt(u, B, sigma);
+    g.addColorStop(f, rgba(col));
+  }
+  c.fillStyle = g; c.fillRect(GX - 200, levelY - 40, 400, INNER_BOT - levelY + 80);
+  // cylinder optics: deeper colour at the walls, a bright refracted band left of centre
+  const hw = innerHW(levelY);
+  const h = c.createLinearGradient(GX - hw, 0, GX + hw, 0);
+  h.addColorStop(0, 'rgba(70,30,30,0.16)'); h.addColorStop(0.12, 'rgba(70,30,30,0.0)');
+  h.addColorStop(0.30, 'rgba(255,255,255,0.20)'); h.addColorStop(0.40, 'rgba(255,255,255,0.0)');
+  h.addColorStop(0.80, 'rgba(70,30,30,0.0)'); h.addColorStop(1, 'rgba(70,30,30,0.22)');
+  c.fillStyle = h; c.fillRect(GX - 200, levelY - 40, 400, INNER_BOT - levelY + 80);
+  c.restore();
+}
+
+function drawSurface(c, t, B, levelY) {
+  if (B.V < 0.3) return;
+  const m = mixAmt(t), sigma = 3 + m * 420;
+  const top = colorAt(B.V, B, sigma);
+  const hw = innerHW(levelY), ry = hw * ER;
+  const a = stirAmp(t);
+  const tilt = a * 0.035 * Math.sin(stirPhase(t));
+  c.save();
+  c.beginPath(); c.ellipse(GX, levelY, hw, ry, tilt, 0, Math.PI * 2);
+  const sc = [Math.min(255, top[0] + 18), Math.min(255, top[1] + 22), Math.min(255, top[2] + 22), Math.max(0.22, top[3] * 0.8)];
+  c.fillStyle = rgba(sc); c.fill();
+  c.clip();
+  // meniscus line and specular sheen
+  c.lineWidth = 2.5; c.strokeStyle = 'rgba(255,255,255,0.75)';
+  c.beginPath(); c.ellipse(GX, levelY, hw - 1, ry - 1, tilt, Math.PI * 0.05, Math.PI * 0.95); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.28)';
+  c.beginPath(); c.ellipse(GX - hw * 0.35, levelY - ry * 0.2, hw * 0.35, ry * 0.32, tilt, 0, Math.PI * 2); c.fill();
+  // ripples from the stream
+  for (const p of POURS) {
+    const a0 = t - p.T; if (a0 < 0 || a0 > POUR_LEN + 0.6) continue;
+    for (let k = 0; k < 12; k++) {
+      const tk = k * 0.11; const age = a0 - tk; if (age < 0 || age > 0.6 || tk > POUR_LEN) continue;
+      const r = 8 + age * 220;
+      c.lineWidth = 1.6; c.strokeStyle = `rgba(255,255,255,${0.5 * (1 - age / 0.6)})`;
+      c.beginPath(); c.ellipse(552, levelY, r, r * ER, 0, 0, Math.PI * 2); c.stroke();
+    }
+  }
+  c.restore();
+}
+
+function cubePath(c, s) {
+  const h = s / 2, r = 18;
+  c.beginPath(); c.roundRect(-h, -h, s, s, r);
+}
+function drawIce(c, p, levelY, tint) {
+  c.save();
+  c.translate(p.x, p.y); c.rotate(p.r * Math.PI / 180);
+  const s = p.s, h = s / 2;
+  cubePath(c, s);
+  c.fillStyle = 'rgba(255,255,255,0.30)'; c.fill();
+  // frosted core
+  const g = c.createRadialGradient(-6, -4, 2, 0, 0, h * 1.05);
+  g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(0.55, 'rgba(255,255,255,0.12)'); g.addColorStop(1, 'rgba(255,255,255,0.0)');
+  c.fillStyle = g; c.fill();
+  // bevelled faces
+  c.lineWidth = 2.5; c.strokeStyle = 'rgba(255,255,255,0.92)'; c.stroke();
+  c.lineWidth = 2; c.strokeStyle = 'rgba(120,128,140,0.30)';
+  c.beginPath(); c.roundRect(-h + 9, -h + 9, s - 18, s - 18, 10); c.stroke();
+  c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.85)';
+  c.beginPath(); c.moveTo(-h + 16, -h + 8); c.lineTo(h - 26, -h + 8); c.stroke();
+  c.beginPath(); c.moveTo(-h + 8, -h + 18); c.lineTo(-h + 8, h - 34); c.stroke();
+  c.lineWidth = 2; c.strokeStyle = 'rgba(110,100,105,0.22)';
+  c.beginPath(); c.moveTo(h - 4, -h + 22); c.lineTo(h - 4, h - 18); c.lineTo(-h + 22, h - 4); c.stroke();
+  c.restore();
+  // submerged part takes the liquid's colour
+  if (tint && tint[3] > 0.01) {
+    c.save();
+    c.beginPath(); c.rect(GX - 220, levelY, 440, 600); c.clip();
+    c.translate(p.x, p.y); c.rotate(p.r * Math.PI / 180);
+    cubePath(c, s);
+    c.fillStyle = rgba(tint, 0.5); c.fill();
+    c.restore();
+  }
+}
+
+function drawStream(c, t, p, B, levelY) {
+  const jp = jigPose(p, t); if (!jp) return;
+  const a = t - p.T;
+  const ts = -0.16, te = POUR_LEN - 0.05;
+  if (a < ts) return;
+  const lip = { x: jp.x - 2, y: jp.y + 4 };
+  const impY = levelY - 2, G = 44000;
+  const yHead = Math.min(impY, lip.y + 0.5 * G * Math.pow(a - ts, 2));
+  const yTail = a > te ? lip.y + 0.5 * G * Math.pow(a - te, 2) : lip.y;
+  if (yTail >= impY) return;
+  const fr = clamp(flowRate(clamp(a, 0.02, POUR_LEN - 0.02)) * POUR_LEN / 2);
+  const w0 = 6 + 13 * fr, w1 = 4 + 6 * fr;
+  const xAt = y => lerp(lip.x, 552, Math.sqrt(clamp((y - lip.y) / (impY - lip.y))));
+  c.save();
+  const N = 24, L = [], R = [];
+  for (let i = 0; i <= N; i++) {
+    const y = lerp(yTail, yHead, i / N), f = clamp((y - lip.y) / (impY - lip.y));
+    const w = lerp(w0, w1, Math.sqrt(f)) * (1 + 0.08 * Math.sin(y * 0.09 + t * 40)) / 2;
+    const x = xAt(y);
+    L.push([x - w, y]); R.push([x + w, y]);
+  }
+  c.beginPath(); c.moveTo(L[0][0], L[0][1]);
+  for (const q of L) c.lineTo(q[0], q[1]);
+  for (let i = R.length - 1; i >= 0; i--) c.lineTo(R[i][0], R[i][1]);
+  c.closePath();
+  c.fillStyle = rgba(p.stream); c.fill();
+  c.lineWidth = 1.2; c.strokeStyle = 'rgba(120,100,95,0.35)'; c.stroke();
+  // crisp highlight down the stream
+  c.beginPath();
+  for (let i = 0; i <= N; i++) { const q = L[i], r = R[i]; const x = lerp(q[0], r[0], 0.3); i ? c.lineTo(x, q[1]) : c.moveTo(x, q[1]); }
+  c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,0.9)'; c.stroke();
+  // splash droplets at impact
+  if (yHead >= impY - 1) {
+    const r = rng(1000 + p.T * 10 | 0);
+    for (let k = 0; k < 14; k++) {
+      const t0 = r() * POUR_LEN * 0.9, vx = (r() - 0.5) * 260, vy = -(120 + r() * 200), sz = 2 + r() * 3.2;
+      const age = a - t0; if (age < 0 || age > 0.32) continue;
+      const x = 552 + vx * age, y = impY + vy * age + 0.5 * 2600 * age * age;
+      if (y > impY + 2) continue;
+      c.fillStyle = rgba(p.stream, 1); c.beginPath(); c.arc(x, y, sz, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(x - sz * 0.3, y - sz * 0.3, sz * 0.35, 0, Math.PI * 2); c.fill();
+    }
+  }
+  c.restore();
+}
+
+function drawJigger(c, jp) {
+  c.save();
+  c.translate(jp.x, jp.y); c.rotate(jp.ang);
+  const steel = (x0, x1) => {
+    const g = c.createLinearGradient(x0, 0, x1, 0);
+    g.addColorStop(0, '#8E979F'); g.addColorStop(0.18, '#F4F6F7'); g.addColorStop(0.36, '#B9C0C6');
+    g.addColorStop(0.62, '#757E86'); g.addColorStop(0.85, '#DDE2E5'); g.addColorStop(1, '#9AA2A9');
+    return g;
+  };
+  // large cup (pouring side), opening at y=0
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(88, 0); c.lineTo(61, 92); c.lineTo(27, 92); c.closePath();
+  c.fillStyle = steel(0, 88); c.fill();
+  c.lineWidth = 1.2; c.strokeStyle = 'rgba(70,74,80,0.55)'; c.stroke();
+  // rolled rim
+  c.beginPath(); c.roundRect(-3, -5, 94, 8, 4); c.fillStyle = steel(-3, 91); c.fill(); c.stroke();
+  // waist
+  c.beginPath(); c.roundRect(22, 90, 44, 12, 3); c.fillStyle = steel(22, 66); c.fill(); c.stroke();
+  // small cup
+  c.beginPath(); c.moveTo(27, 102); c.lineTo(61, 102); c.lineTo(78, 168); c.lineTo(10, 168); c.closePath();
+  c.fillStyle = steel(10, 78); c.fill(); c.stroke();
+  c.beginPath(); c.roundRect(7, 165, 74, 7, 3.5); c.fillStyle = steel(7, 81); c.fill(); c.stroke();
+  c.restore();
+}
+
+function drawSpoon(c, sp, levelY, below) {
+  const seg = (dx) => {
+    c.beginPath(); c.moveTo(sp.topX + dx * 0.2, sp.topY); c.lineTo(sp.tipX + dx, sp.tipY - 12);
+    c.lineWidth = 7; c.lineCap = 'round';
+    const g = c.createLinearGradient(sp.tipX - 6, 0, sp.tipX + 6, 0);
+    g.addColorStop(0, '#7D868E'); g.addColorStop(0.4, '#F2F4F5'); g.addColorStop(1, '#8B949B');
+    c.strokeStyle = g; c.stroke();
+    // twisted shaft: diagonal glints
+    const n = 46;
+    for (let i = 0; i < n; i++) {
+      const f = i / n, x = lerp(sp.topX + dx * 0.2, sp.tipX + dx, f), y = lerp(sp.topY, sp.tipY - 12, f);
+      c.lineWidth = 1.4; c.strokeStyle = 'rgba(90,96,104,0.55)';
+      c.beginPath(); c.moveTo(x - 3.5, y - 2); c.lineTo(x + 3.5, y + 3); c.stroke();
+    }
+    c.beginPath(); c.ellipse(sp.tipX + dx, sp.tipY, 11, 16, 0.1, 0, Math.PI * 2);
+    c.fillStyle = '#C9CFD4'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = 'rgba(70,74,80,0.6)'; c.stroke();
+  };
+  c.save();
+  if (!below) { c.beginPath(); c.rect(-400, -2000, 1900, levelY + 2000); c.clip(); seg(0); }
+  else { interiorPath(c, levelY); c.clip(); c.globalAlpha *= 0.85; seg(7); }
+  c.restore();
+}
+
+function drawGlassFront(c, t, B, levelY) {
+  c.save();
+  // walls: refractive edges
+  const edge = (side) => {
+    const g = c.createLinearGradient(GX + side * TOP_HW, 0, GX + side * (TOP_HW - 26), 0);
+    g.addColorStop(0, 'rgba(110,92,84,0.34)'); g.addColorStop(0.3, 'rgba(255,255,255,0.18)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.beginPath();
+    c.moveTo(GX + side * TOP_HW, TOP_Y); c.lineTo(GX + side * BOT_HW, BOT_Y);
+    c.lineTo(GX + side * (BOT_HW - 22), BOT_Y); c.lineTo(GX + side * (TOP_HW - 22), TOP_Y); c.closePath();
+    c.fillStyle = g; c.fill();
+  };
+  edge(-1); edge(1);
+  // long specular streaks
+  c.filter = 'blur(2px)';
+  c.fillStyle = 'rgba(255,255,255,0.62)';
+  c.beginPath(); c.moveTo(GX - 122, TOP_Y + 30); c.lineTo(GX - 104, TOP_Y + 30); c.lineTo(GX - 86, BOT_Y - 70); c.lineTo(GX - 100, BOT_Y - 70); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.35)';
+  c.beginPath(); c.moveTo(GX - 92, TOP_Y + 40); c.lineTo(GX - 86, TOP_Y + 40); c.lineTo(GX - 72, BOT_Y - 120); c.lineTo(GX - 78, BOT_Y - 120); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.42)';
+  c.beginPath(); c.moveTo(GX + 128, TOP_Y + 46); c.lineTo(GX + 136, TOP_Y + 46); c.lineTo(GX + 114, BOT_Y - 90); c.lineTo(GX + 108, BOT_Y - 90); c.closePath(); c.fill();
+  c.filter = 'none';
+  // outline
+  c.lineWidth = 2; c.strokeStyle = 'rgba(105,86,78,0.55)';
+  c.beginPath(); c.moveTo(GX - TOP_HW, TOP_Y); c.lineTo(GX - BOT_HW, BOT_Y); c.stroke();
+  c.beginPath(); c.moveTo(GX + TOP_HW, TOP_Y); c.lineTo(GX + BOT_HW, BOT_Y); c.stroke();
+  // front rim
+  c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.95)';
+  c.beginPath(); c.ellipse(GX, TOP_Y, TOP_HW, TOP_HW * ER, 0, 0, Math.PI); c.stroke();
+  c.lineWidth = 1.2; c.strokeStyle = 'rgba(120,100,92,0.45)';
+  c.beginPath(); c.ellipse(GX, TOP_Y + 2.5, TOP_HW - 1, (TOP_HW - 1) * ER, 0, 0.05, Math.PI - 0.05); c.stroke();
+  // heavy base
+  const hb = innerHW(INNER_BOT);
+  c.beginPath();
+  c.moveTo(GX - outerHW(INNER_BOT), INNER_BOT);
+  c.lineTo(GX - BOT_HW, BOT_Y); c.ellipse(GX, BOT_Y, BOT_HW, BOT_HW * ER, 0, Math.PI, 0, true);
+  c.lineTo(GX + outerHW(INNER_BOT), INNER_BOT);
+  c.ellipse(GX, INNER_BOT, hb, hb * ER, 0, 0, Math.PI, false);
+  c.closePath();
+  const bg = c.createLinearGradient(0, INNER_BOT - 10, 0, BOT_Y + 18);
+  const mix = mixedColor(B);
+  if (B.V > 1) { bg.addColorStop(0, rgba([mix[0], mix[1], mix[2], 0.55 * clamp(mix[3] * 2)])); }
+  else bg.addColorStop(0, 'rgba(255,255,255,0.35)');
+  bg.addColorStop(0.5, 'rgba(255,255,255,0.45)'); bg.addColorStop(1, 'rgba(200,186,178,0.40)');
+  c.fillStyle = bg; c.fill();
+  c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,0.85)';
+  c.beginPath(); c.ellipse(GX, INNER_BOT, hb, hb * ER, 0, 0.1, Math.PI - 0.1); c.stroke();
+  c.lineWidth = 1.6; c.strokeStyle = 'rgba(110,90,82,0.5)';
+  c.beginPath(); c.ellipse(GX, BOT_Y, BOT_HW, BOT_HW * ER, 0, 0, Math.PI); c.stroke();
+  c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,0.7)';
+  c.beginPath(); c.ellipse(GX, BOT_Y - 4, BOT_HW - 8, (BOT_HW - 8) * ER, 0, 0.2, Math.PI - 0.2); c.stroke();
+  c.restore();
+}
+
+function drawBubbles(c, t, levelY) {
+  const soda = POURS[4]; const a = t - soda.T; if (a < 0.05) return;
+  const r = rng(77);
+  c.save(); interiorPath(c, levelY); c.clip();
+  const H = INNER_BOT - levelY;
+  for (let k = 0; k < 70; k++) {
+    const xf = r() * 2 - 1, v = 50 + r() * 110, ph = r(), sz = 1.5 + r() * 3, start = r() * 0.8;
+    if (a < start) continue;
+    const yy = INNER_BOT - ((a - start) * v + ph * H) % Math.max(H, 1);
+    const x = GX + xf * innerHW(yy) * 0.85 + 3 * Math.sin(t * 3 + k);
+    const fade = clamp((a - start) / 0.4) * clamp((yy - levelY) / 14);
+    c.lineWidth = 1; c.strokeStyle = `rgba(255,255,255,${0.75 * fade})`;
+    c.beginPath(); c.arc(x, yy, sz, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = `rgba(255,255,255,${0.35 * fade})`; c.fill();
+  }
+  c.restore();
+}
+
+function drawCondensation(c, t) {
+  const r = rng(4242);
+  c.save(); glassPath(c); c.clip();
+  for (let k = 0; k < 90; k++) {
+    const yf = r(), xf = r() * 2 - 1, sz = 1.6 + Math.pow(r(), 2) * 5.5, t0 = 17.5 + r() * 6;
+    const y = lerp(TOP_Y + 40, INNER_BOT - 10, yf), x = GX + xf * outerHW(y) * 0.88;
+    let yy = y;
+    if (k === 7) { yy = y + Math.max(0, t - 25.5) * 26; }
+    const a = clamp((t - t0) / 1.2); if (a <= 0) continue;
+    c.fillStyle = `rgba(255,255,255,${0.20 * a})`;
+    c.beginPath(); c.ellipse(x, yy, sz, sz * 1.18, 0, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 1; c.strokeStyle = `rgba(110,80,74,${0.22 * a})`;
+    c.beginPath(); c.ellipse(x, yy, sz, sz * 1.18, 0, 0.2, Math.PI - 0.2); c.stroke();
+    c.fillStyle = `rgba(255,255,255,${0.9 * a})`;
+    c.beginPath(); c.arc(x - sz * 0.35, yy - sz * 0.4, Math.max(0.7, sz * 0.28), 0, Math.PI * 2); c.fill();
+  }
+  c.restore();
+}
+
+function drawGarnish(c, p) {
+  c.save();
+  c.translate(p.x, p.y); c.rotate(p.r * Math.PI / 180);
+  const R = 84;
+  // rind
+  let g = c.createLinearGradient(0, 0, 0, R);
+  g.addColorStop(0, '#F3B568'); g.addColorStop(1, '#E77F5C');
+  c.beginPath(); c.moveTo(-R, 0); c.arc(0, 0, R, Math.PI, 0, true); c.closePath(); c.fillStyle = g; c.fill();
+  // pith
+  c.beginPath(); c.moveTo(-R + 7, 0); c.arc(0, 0, R - 7, Math.PI, 0, true); c.closePath(); c.fillStyle = '#FBEDE2'; c.fill();
+  // flesh segments
+  const n = 6;
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * Math.PI + 0.04, a1 = ((i + 1) / n) * Math.PI - 0.04;
+    c.beginPath(); c.moveTo(Math.cos(a0) * 6, Math.sin(a0) * 6); c.arc(0, 0, R - 13, a0, a1); c.closePath();
+    const fg = c.createRadialGradient(0, 0, 4, 0, 0, R - 13);
+    fg.addColorStop(0, '#F7A79B'); fg.addColorStop(0.5, '#EE6F67'); fg.addColorStop(1, '#E2574F');
+    c.fillStyle = fg; c.fill();
+  }
+  // juice vesicles
+  const r = rng(9);
+  c.fillStyle = 'rgba(255,220,212,0.55)';
+  for (let k = 0; k < 60; k++) {
+    const a = r() * Math.PI, d = 14 + r() * (R - 32);
+    c.beginPath(); c.ellipse(Math.cos(a) * d, Math.sin(a) * d, 1.4, 4.2, a, 0, Math.PI * 2); c.fill();
+  }
+  // cut face highlight
+  c.lineWidth = 3; c.strokeStyle = 'rgba(255,240,232,0.9)';
+  c.beginPath(); c.moveTo(-R + 2, 1); c.lineTo(R - 2, 1); c.stroke();
+  c.restore();
+}
+
+// ---------- DOM ----------
+const $ = id => document.getElementById(id);
+const E = { intro: $('intro'), hdr: $('hdr'), ctr: $('ctr'), lab: $('lab'), lead: $('lead'), fin: $('fin'), flash: $('flash') };
+const L = { nm: E.lab.querySelector('.nm'), num: E.lab.querySelector('.num'), unit: E.lab.querySelector('.unit'), sub: E.lab.querySelector('.sub') };
+const finLines = [...E.fin.querySelectorAll('.h, .rule, .ln')];
+const B = { intro: $('bIntro'), lab: $('bLab'), ctr: $('bCtr'), fin: $('bFin') };
+
+function setBlur(el, fe, fid, sx, sy) {
+  if (sx < 0.3 && sy < 0.3) { el.style.filter = 'none'; return; }
+  fe.setAttribute('stdDeviation', `${sx.toFixed(2)} ${sy.toFixed(2)}`);
+  el.style.filter = `url(#${fid})`;
+}
+// label entry / exit: spring in from below, exponential out upward
+function cardMotion(a, hold) {
+  if (a < 0) return null;
+  const inE = spring(a, 2.0, 0.62);
+  let dy = 56 * (1 - inE), op = clamp(expoOut(a / 0.35));
+  if (a > hold) { const e = expoIn((a - hold) / 0.2); dy -= 90 * e; op *= 1 - e; }
+  return { dy, op };
+}
+function velY(fn, t) { const a = fn(t + 1 / 240), b = fn(t - 1 / 240); return a && b ? Math.abs(a.dy - b.dy) * 120 : 0; }
+
+function currentStep(t) { let s = null; for (const st of STEPS) if (t >= st.T - 0.001) s = st; return s; }
+
+function labelAnchor(st, t, levelY) {
+  if (st.kind === 'ice') return 740;
+  if (st.kind === 'garnish' || st.kind === 'stir') return 630;
+  return clamp(levelY, 380, 790);
+}
+
+window.seek = function (t) {
+  t = clamp(t, 0, DUR);
+  const Bd = bands(t), levelY = levelOf(Bd.V), mix = mixedColor(Bd);
+  const cam = camera(t);
+  const topTint = Bd.V > 0.3 ? colorAt(Bd.V * 0.5, Bd, 3 + mixAmt(t) * 420) : null;
+
+  // ----- canvas -----
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1080, 1080);
+  ctx.setTransform(cam.s, 0, 0, cam.s, cam.d.x - cam.c.x * cam.s, cam.d.y - cam.c.y * cam.s);
+  ctx.globalAlpha = 1;
+  drawBackground(ctx, mix, Bd.V);
+  drawGlassBack(ctx);
+  drawLiquid(ctx, t, Bd, levelY);
+  const sp = spoonPose(t);
+  if (sp) drawSpoon(ctx, sp, levelY, true);
+  drawSurface(ctx, t, Bd, levelY);
+  drawBubbles(ctx, t, levelY);
+  if (sp && !sp.front) blurDraw(ctx, spoonPose, t, p => drawSpoon(ctx, p, levelY, false), 6);
+  // ice: lower row first
+  for (const i of [2, 3, 0, 1]) {
+    blurDraw(ctx, tt => icePose(i, tt, levelY), t, p => drawIce(ctx, p, levelY, p.y + p.s * 0.5 > levelY ? topTint : null));
+  }
+  if (sp && sp.front) blurDraw(ctx, spoonPose, t, p => drawSpoon(ctx, p, levelY, false), 6);
+  for (const p of POURS) drawStream(ctx, t, p, Bd, levelY);
+  drawGlassFront(ctx, t, Bd, levelY);
+  drawCondensation(ctx, t);
+  blurDraw(ctx, garnPose, t, p => drawGarnish(ctx, p));
+  for (const p of POURS) blurDraw(ctx, tt => jigPose(p, tt), t, jp => drawJigger(ctx, jp), 6);
+
+  // ----- studio light comes up -----
+  E.flash.style.opacity = (1 - expoOut(t / 0.9)).toFixed(4);
+
+  // ----- intro title -----
+  {
+    const f = tt => { const m = cardMotion(tt - BEAT, BAR - BEAT - 0.32); return m; };
+    const m = f(t);
+    if (m && t < BAR) {
+      E.intro.style.display = 'block';
+      E.intro.style.transform = `translate(740px, ${450 + m.dy}px)`;
+      E.intro.style.opacity = m.op.toFixed(3);
+      const sub = E.intro.querySelector('.s');
+      const ms = cardMotion(t - 2 * BEAT, BAR - 2 * BEAT - 0.32);
+      sub.style.opacity = ms ? ms.op.toFixed(3) : 0;
+      sub.style.transform = `translateY(${ms ? ms.dy * 0.6 : 30}px)`;
+      setBlur(E.intro, B.intro, 'fIntro', 0, Math.min(14, velY(f, t) * 0.02));
+    } else E.intro.style.display = 'none';
+  }
+
+  // ----- header + counter -----
+  {
+    const on = clamp((t - BAR) / 0.4) * (1 - clamp((t - CAM_T) / 0.5));
+    E.hdr.style.opacity = expoOut(on).toFixed(3);
+    E.ctr.style.opacity = expoOut(on).toFixed(3);
+    const st = currentStep(t);
+    if (st && on > 0) {
+      const idx = STEPS.indexOf(st) + 1;
+      E.ctr.textContent = `${String(idx).padStart(2, '0')} / ${String(STEPS.length).padStart(2, '0')}`;
+      const a = t - st.T, dy = 22 * (1 - spring(a, 2.6, 0.7));
+      E.ctr.style.transform = `translateY(${dy}px)`;
+      const v = Math.abs(22 * (spring(a + 1 / 240, 2.6, 0.7) - spring(a - 1 / 240, 2.6, 0.7))) * 120;
+      setBlur(E.ctr, B.ctr, 'fCtr', 0, Math.min(6, v * 0.02));
+    }
+  }
+
+  // ----- step label -----
+  {
+    const st = currentStep(t);
+    const show = st && t < CAM_T;
+    if (show) {
+      const a = t - st.T;
+      const f = tt => cardMotion(tt - st.T, BAR - 0.22);
+      const m = f(t);
+      E.lab.style.display = 'block';
+      L.nm.textContent = st.name;
+      if (st.kind === 'pour') { L.num.textContent = Math.round(st.ml * pourFrac(a)); L.unit.textContent = 'ml'; }
+      else { L.num.textContent = st.val; L.unit.textContent = st.unit; }
+      L.sub.textContent = st.sub;
+      const ay = labelAnchor(st, t, levelY);
+      E.lab.style.transform = `translateY(${ay + m.dy}px)`;
+      E.lab.style.opacity = m.op.toFixed(3);
+      setBlur(E.lab, B.lab, 'fLab', 0, Math.min(16, velY(f, t) * 0.02));
+      // leader line from the glass at the new level
+      if (st.kind === 'pour') {
+        const x0 = GX + outerHW(levelY) + 12, x1 = 726;
+        const grow = expoOut(a / 0.4);
+        E.lead.style.display = 'block';
+        E.lead.style.transform = `translate(${x0}px, ${levelY - 1}px)`;
+        E.lead.style.width = `${Math.max(0, (x1 - x0) * grow)}px`;
+        E.lead.style.opacity = m.op.toFixed(3);
+      } else E.lead.style.display = 'none';
+    } else { E.lab.style.display = 'none'; E.lead.style.display = 'none'; }
+  }
+
+  // ----- finale card -----
+  {
+    E.fin.style.display = t >= FIN_T - 0.01 ? 'block' : 'none';
+    let maxV = 0;
+    finLines.forEach((el, i) => {
+      const t0 = FIN_T + i * (BEAT / 2);
+      const a = t - t0;
+      if (el.classList.contains('rule')) {
+        el.style.transform = `scaleX(${expoOut(a / 0.5).toFixed(4)})`;
+        el.style.opacity = a > 0 ? 1 : 0;
+        return;
+      }
+      const dy = 44 * (1 - spring(a, 2.0, 0.65));
+      el.style.transform = `translateY(${a > 0 ? dy : 44}px)`;
+      el.style.opacity = clamp(expoOut(a / 0.35)).toFixed(3);
+      const v = Math.abs(44 * (spring(a + 1 / 240, 2.0, 0.65) - spring(a - 1 / 240, 2.0, 0.65))) * 120;
+      maxV = Math.max(maxV, v);
+    });
+    setBlur(E.fin, B.fin, 'fFin', 0, Math.min(10, maxV * 0.015));
+  }
+};
+
+window.DUR = DUR; window.BEAT = BEAT; window.BAR = BAR; window.STEPS = STEPS; window.POURS = POURS;
+window.ready = document.fonts.ready.then(() => { window.seek(0); return true; });
+</script>
+<script src="audio.js"></script>
+</body>
+</html>
