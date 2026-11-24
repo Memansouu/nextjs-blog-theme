@@ -2,6 +2,10 @@
 
 Rendu : `renders/rexpert-pub-9x16.mp4` — 1080x1920, 30 fps, 33 s (v2).
 
+## v3
+- Phrase de marque reprise en « R, Expert. » : la prise précédente liait le R au mot (« R-rexpert »).
+- Écran de fin centré (logo, accroche, bouton, site), dans la zone sûre 9:16.
+
 ## v2
 - Voix : ElevenLabs « George » (eleven_multilingual_v2, clé de la cliente) à la place de Kokoro ; clips recalés, écran de fin allongé d'1 s.
 - « plus de 500 avis » (demande de la cliente ; le site affiche encore 370+).
