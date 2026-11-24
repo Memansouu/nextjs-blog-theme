@@ -2,6 +2,9 @@
 
 Rendu : `renders/rexpert-pub-9x16.mp4` — 1080x1920, 30 fps, 33 s (v2).
 
+## v4
+- Coupure sur la phrase de marque : impact grave retiré (il masquait la voix), nouvelle prise « R Expert » sans liaison ni virgule, pause après « Expert. » raccourcie de 0,58 s à 0,22 s, phrase décalée à 26,75 s hors du whoosh.
+
 ## v3
 - Phrase de marque reprise en « R, Expert. » : la prise précédente liait le R au mot (« R-rexpert »).
 - Écran de fin centré (logo, accroche, bouton, site), dans la zone sûre 9:16.
