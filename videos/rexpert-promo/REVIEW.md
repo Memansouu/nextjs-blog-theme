@@ -2,6 +2,10 @@
 
 Rendu : `renders/rexpert-pub-9x16.mp4` — 1080x1920, 30 fps, 33 s (v2).
 
+## v5
+- Parasites en fin de prise retirés (v3, v5, v8 : début du mot suivant généré par ElevenLabs puis coupé), avec fondu de 60 ms.
+- Transition preuves → écran de fin avancée de 0,4 s (fin de carte 25,75 s, « R Expert » à 26,35 s), whoosh baissé à 0,25.
+
 ## v4
 - Coupure sur la phrase de marque : impact grave retiré (il masquait la voix), nouvelle prise « R Expert » sans liaison ni virgule, pause après « Expert. » raccourcie de 0,58 s à 0,22 s, phrase décalée à 26,75 s hors du whoosh.
 
