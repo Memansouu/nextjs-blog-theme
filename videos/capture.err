@@ -1,6 +1,0 @@
-HYPERFRAMES_CAPTURE_PHASE {"schema":"hyperframes.capture.phase.v1","phase":"browser","status":"started","remainingMs":null}
-[hyperframes] Chrome's sandbox is off for website capture on this host (running as root, in a container or serverless runtime, or with user namespaces restricted). Capture only sites you trust here, or set HYPERFRAMES_CHROME_SANDBOX=1 to require the sandbox.
-HYPERFRAMES_CAPTURE_PHASE {"schema":"hyperframes.capture.phase.v1","phase":"browser","status":"completed","remainingMs":null}
-HYPERFRAMES_CAPTURE_PHASE {"schema":"hyperframes.capture.phase.v1","phase":"navigation","status":"started","remainingMs":null}
-[CaptureProxy:FAILED] reason=upstream_failed open=2
-[CaptureProxy:FAILED] reason=upstream_failed open=2
