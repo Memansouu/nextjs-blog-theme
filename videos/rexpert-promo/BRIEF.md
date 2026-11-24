@@ -11,7 +11,7 @@ length: 30s
 language: fr
 audience: particuliers et entreprises en Belgique (Wallonie)
 style: 3D isométrique
-voice: kokoro (fr, le plus naturel possible — extrait à valider avant rendu)
+voice: elevenlabs George (JBFqnCBsd6RMkjVDRZzb), eleven_multilingual_v2
 ---
 
 # Brief — publicité R Expert Energie Ecologistique

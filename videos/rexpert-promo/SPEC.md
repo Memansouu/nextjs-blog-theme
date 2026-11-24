@@ -2,7 +2,7 @@
 
 GOAL:    le spectateur sent qu'il peut ne plus dépendre du réseau et retient « R Expert = liberté énergétique, 1 500 €/an, 2 semaines ».
 OUTPUT:  HyperFrames, 1080 x 1920, 30 fps
-TIME:    32 s x 30 = 960 frames. Voix = horloge (Kokoro ff_siwis, vitesse 0.95).
+TIME:    33 s x 30 = 990 frames. Voix = horloge (ElevenLabs « George », eleven_multilingual_v2).
 LOOK:    ciel en dégradé vertical #e3e8e6 → #f4f4f4 (acte 1, gris neutre) qui vire à #d2fbdf → #f4f4f4 à la libération (19 s).
          Monde 3D isométrique (caméra orthographique, azimut 45° ± 12°, élévation 35.26°), îlot de terrain 24 x 24 u,
          dessus herbe #9fd8a9, flancs vert profond #0b4a3f. Maisons blanc cassé #f2efe8, toits terre cuite #c46a4a,
