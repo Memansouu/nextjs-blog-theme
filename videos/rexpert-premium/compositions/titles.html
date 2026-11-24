@@ -1,0 +1,159 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      font-family: "Inter", sans-serif;
+      color: #012b26;
+    }
+    .tt {
+      position: absolute;
+      left: 130px;
+      top: 370px;
+      width: 750px;
+    }
+    .ln {
+      display: block;
+      overflow: hidden;
+      margin-bottom: -2px;
+    }
+    .ln > span {
+      display: inline-block;
+      font-weight: 900;
+      font-size: 100px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      background: #012b26;
+      color: #f4f4f4;
+      padding: 10px 26px 16px;
+    }
+    .tt.big .ln > span {
+      font-size: 190px;
+      color: #79ffbb;
+    }
+    .mark {
+      display: block;
+      height: 18px;
+      width: 330px;
+      background: #79ffbb;
+      margin-top: 10px;
+      transform-origin: left center;
+    }
+    #t-proof .ln > span.num {
+      white-space: pre;
+      color: #79ffbb;
+      font-weight: 900;
+      font-size: 160px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    #t-proof .ln > span.sub {
+      font-weight: 700;
+      font-size: 44px;
+      line-height: 1.15;
+    }
+    #t-proof .row {
+      display: flex;
+      width: fit-content;
+      align-items: center;
+      gap: 18px;
+      margin-top: 22px;
+      font-weight: 800;
+      font-size: 46px;
+      background: #f4f4f4;
+      color: #012b26;
+      padding: 12px 26px 14px;
+    }
+    #t-proof .chip {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      background: #79ffbb;
+      border: 4px solid #012b26;
+      border-radius: 6px;
+    }
+  </style>
+  <div id="root" data-composition-id="titles" data-width="1080" data-height="1920">
+    <div id="t-1" class="tt clip" data-start="0" data-duration="3.25" data-track-index="0">
+      <span class="ln"><span>Dépendant</span></span>
+      <span class="ln"><span>du réseau ?</span></span>
+    </div>
+    <div id="t-2" class="tt clip" data-start="3.4" data-duration="3.35" data-track-index="0">
+      <span class="ln"><span>Votre facture,</span></span>
+      <span class="ln"><span>imposée.</span></span>
+    </div>
+    <div id="t-3" class="tt clip" data-start="7.0" data-duration="2.0" data-track-index="0">
+      <span class="ln"><span>Reprenez</span></span>
+      <span class="ln"><span>la main.</span></span>
+    </div>
+    <div id="t-4" class="tt clip" data-start="9.25" data-duration="2.25" data-track-index="0">
+      <span class="ln"><span>Panneaux</span></span>
+      <span class="ln"><span>solaires</span></span>
+    </div>
+    <div id="t-5" class="tt clip" data-start="11.65" data-duration="2.35" data-track-index="0">
+      <span class="ln"><span>Batterie</span></span>
+      <span class="ln"><span>domestique</span></span>
+    </div>
+    <div id="t-6" class="tt clip" data-start="14.15" data-duration="2.75" data-track-index="0">
+      <span class="ln"><span>Borne de</span></span>
+      <span class="ln"><span>recharge</span></span>
+    </div>
+    <div id="t-7" class="tt clip" data-start="17.1" data-duration="1.95" data-track-index="0">
+      <span class="ln"><span>Air</span></span>
+      <span class="ln"><span>conditionné</span></span>
+    </div>
+    <div id="t-8" class="tt big clip" data-start="19.5" data-duration="1.7" data-track-index="0">
+      <span class="ln"><span>Libre.</span></span>
+      <span class="mark" id="t-8-mark"></span>
+    </div>
+    <div id="t-proof" class="tt clip" data-start="21.25" data-duration="4.6" data-track-index="0">
+      <span class="ln"><span class="num" id="t-num">0 €</span></span>
+      <span class="ln"><span class="sub">d'économie par an, en moyenne</span></span>
+      <div class="row" id="t-row1"><span class="chip"></span>Installé en 2 semaines</div>
+      <div class="row" id="t-row2"><span class="chip"></span>4,8 ★ · plus de 500 avis</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      // Each title: lines rise out of their mask, hold still while read, then drop out.
+      var cues = [
+        ["#t-1", 0, 3.25],
+        ["#t-2", 3.4, 6.75],
+        ["#t-3", 7.0, 9.0],
+        ["#t-4", 9.25, 11.5],
+        ["#t-5", 11.65, 14.0],
+        ["#t-6", 14.15, 16.9],
+        ["#t-7", 17.1, 19.05],
+        ["#t-8", 19.5, 21.2],
+        ["#t-proof", 21.25, 25.85],
+      ];
+      cues.forEach(function (c) {
+        var spans = document.querySelectorAll(c[0] + " .ln > span");
+        // The hook is already on screen at frame 0: it is the thumbnail.
+        if (c[1] > 0) tl.fromTo(spans, { yPercent: 110 }, { yPercent: 0, duration: 0.38, ease: "power3.out", stagger: 0.07 }, c[1] + 0.02);
+        tl.to(spans, { yPercent: -110, duration: 0.24, ease: "power2.in", stagger: 0.04 }, c[2] - 0.3);
+      });
+      tl.fromTo("#t-8-mark", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power3.out" }, 19.75);
+      tl.to("#t-8-mark", { scaleX: 0, transformOrigin: "right center", duration: 0.2, ease: "power2.in" }, 20.85);
+
+      // 1 500 € counts up, from the site's own figure.
+      var counter = { v: 0 };
+      var num = document.getElementById("t-num");
+      tl.fromTo(counter, { v: 0 }, {
+        v: 1500,
+        duration: 1.3,
+        ease: "power2.out",
+        onUpdate: function () {
+          var n = Math.round(counter.v / 10) * 10;
+          num.textContent = (n >= 1000 ? Math.floor(n / 1000) + "\u2002" + String(n % 1000).padStart(3, "0") : String(n)) + " €";
+        },
+      }, 21.35);
+      tl.fromTo("#t-row1", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 23.4);
+      tl.fromTo("#t-row2", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 24.4);
+      tl.to(["#t-row1", "#t-row2"], { opacity: 0, duration: 0.2 }, 25.55);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["titles"] = tl;
+    })();
+  </script>
+</template>

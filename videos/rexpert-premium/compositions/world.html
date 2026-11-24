@@ -1,0 +1,634 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    #world-sky {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #e9e8e3 0%, #f3f2ee 55%, #e6e7e2 100%);
+    }
+    #world-sky-free {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #d6f3e1 0%, #eef8f1 55%, #e4ece6 100%);
+      opacity: 0;
+    }
+    #world-canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1080px;
+      height: 1920px;
+    }
+  </style>
+  <div id="root" data-composition-id="world" data-width="1080" data-height="1920" data-layout-allow-overflow>
+    <div id="world-sky"></div>
+    <div id="world-sky-free"></div>
+    <canvas id="world-canvas" class="clip" data-start="0" data-duration="26.6" data-track-index="0" width="1080" height="1920"></canvas>
+  </div>
+  <script>
+    (function () {
+      var DURATION = 26.6;
+      var clock = { t: 0 };
+      var host = { clock: clock, render: null };
+      window.__rexWorld = host;
+      window.__hf = window.__hf || {};
+      window.__hf.buildReady = window.__hf.buildReady || {};
+      window.__hf.buildReady["world"] = new Promise(function (resolve) {
+        host.ready = resolve;
+      });
+      var tl = gsap.timeline({ paused: true });
+      tl.to(clock, {
+        t: DURATION,
+        duration: DURATION,
+        ease: "none",
+        onUpdate: function () {
+          if (host.render) host.render(clock.t);
+        },
+      }, 0);
+      tl.fromTo("#world-sky-free", { opacity: 0 }, { opacity: 1, duration: 1.4, ease: "power2.inOut" }, 19.4);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["world"] = tl;
+    })();
+  </script>
+  <script type="module">
+    import * as THREE from "./assets/lib/three.module.min.js";
+    import { RoundedBoxGeometry } from "./assets/lib/RoundedBoxGeometry.js";
+    import { RoomEnvironment } from "./assets/lib/RoomEnvironment.js";
+
+    const host = window.__rexWorld;
+    const W = 1080, H = 1920;
+
+    // ---------- time helpers: every frame is a pure function of t ----------
+    const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+    const seg = (t, a, b) => clamp((t - a) / (b - a));
+    const lerp = (a, b, k) => a + (b - a) * k;
+    const inOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+    const outCubic = (k) => 1 - Math.pow(1 - k, 3);
+    const outQuint = (k) => 1 - Math.pow(1 - k, 5);
+    const outBack = (k, s = 1.2) => (k <= 0 ? 0 : k >= 1 ? 1 : 1 + (s + 1) * Math.pow(k - 1, 3) + s * Math.pow(k - 1, 2));
+    const mulberry = (a) => () => {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const rand = mulberry(77);
+
+    // ---------- renderer: filmic, soft shadows, studio reflections ----------
+    const renderer = new THREE.WebGLRenderer({
+      canvas: document.getElementById("world-canvas"),
+      antialias: true,
+      alpha: true,
+      preserveDrawingBuffer: true,
+    });
+    renderer.setPixelRatio(1);
+    renderer.setSize(W, H, false);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = 0.55;
+
+    const camera = new THREE.PerspectiveCamera(18, W / H, 1, 400);
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0xd8d4cc, 0.25);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xfff3e4, 2.6);
+    sun.position.set(-14, 22, 12);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -17;
+    sun.shadow.camera.right = 17;
+    sun.shadow.camera.top = 17;
+    sun.shadow.camera.bottom = -17;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 70;
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.02;
+    sun.shadow.radius = 4;
+    scene.add(sun);
+    scene.add(sun.target);
+
+    // ---------- materials: an architect's model, the hero in real finishes ----------
+    const std = (c, r = 0.85, m = 0, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m, ...extra });
+    const clay = std(0xeeece7, 0.92);
+    const clayShade = std(0xe2e0da, 0.92);
+    const plinthSide = std(0x173a33, 0.75);
+    const lawn = std(0xc9d4c3, 0.95);
+    const roadMat = std(0xb9bbb6, 0.9);
+    const walkMat = std(0xdcdad4, 0.9);
+    const render = std(0xf3f1ec, 0.75);
+    const anthracite = std(0x2b3134, 0.55, 0.2);
+    const mint = new THREE.MeshBasicMaterial({ color: 0x79ffbb });
+
+    function slatTexture() {
+      const c = document.createElement("canvas");
+      c.width = 256; c.height = 256;
+      const g = c.getContext("2d");
+      for (let x = 0; x < 256; x += 16) {
+        const v = 0.85 + 0.15 * ((x * 37) % 7) / 7;
+        g.fillStyle = `rgb(${Math.round(150 * v)},${Math.round(104 * v)},${Math.round(70 * v)})`;
+        g.fillRect(x, 0, 13, 256);
+        g.fillStyle = "#4a3022";
+        g.fillRect(x + 13, 0, 3, 256);
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = 4;
+      return t;
+    }
+    const wood = std(0xffffff, 0.68, 0, { map: slatTexture() });
+    wood.map.repeat.set(2.2, 1);
+
+    function cellTexture() {
+      const c = document.createElement("canvas");
+      c.width = 256; c.height = 256;
+      const g = c.getContext("2d");
+      g.fillStyle = "#0f2244";
+      g.fillRect(0, 0, 256, 256);
+      g.strokeStyle = "#5d7fb8";
+      g.lineWidth = 2;
+      for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(i * 256 / 6, 0); g.lineTo(i * 256 / 6, 256); g.stroke(); }
+      for (let j = 0; j <= 10; j++) { g.beginPath(); g.moveTo(0, j * 25.6); g.lineTo(256, j * 25.6); g.stroke(); }
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 4;
+      return t;
+    }
+    const cellMat = new THREE.MeshStandardMaterial({ map: cellTexture(), roughness: 0.18, metalness: 0.35, emissive: 0x2b6be0, emissiveIntensity: 0 });
+    const aluMat = std(0xc9ccce, 0.35, 0.8);
+
+    const rbox = (w, h, d, m, r = 0.04) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2.2, h / 2.2, d / 2.2)), m);
+    const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+
+    // ---------- the plinth (architect's model base) ----------
+    const plinth = new THREE.Mesh(new RoundedBoxGeometry(28, 1.6, 28, 3, 0.25), [plinthSide, plinthSide, clay, plinthSide, plinthSide, plinthSide]);
+    plinth.position.y = -0.8;
+    scene.add(plinth);
+    const plinthTop = new THREE.Mesh(new THREE.BoxGeometry(27.6, 0.02, 27.6), clay);
+    plinthTop.position.y = 0.0;
+    scene.add(plinthTop);
+    const road = box(28, 0.04, 2.8, roadMat);
+    road.position.set(0, 0.03, 0);
+    scene.add(road);
+    for (let x = -13; x <= 13; x += 2.2) {
+      const dash = box(1.1, 0.045, 0.08, std(0xf6f6f3, 0.8));
+      dash.position.set(x, 0.035, 0);
+      scene.add(dash);
+    }
+    for (const z of [-1.85, 1.85]) {
+      const walk = box(28, 0.08, 0.9, walkMat);
+      walk.position.set(0, 0.04, z);
+      scene.add(walk);
+    }
+    // lawns behind and in front of the houses
+    for (const [x, z, w, d] of [[0, -6.8, 27.6, 8.8], [0, 6.8, 27.6, 8.8]]) {
+      const l = box(w, 0.05, d, lawn);
+      l.position.set(x, 0.025, z);
+      scene.add(l);
+    }
+
+    // ---------- contemporary houses ----------
+    function makeWindow(w, h, mat) {
+      const g = new THREE.Group();
+      const frame = box(w + 0.08, h + 0.08, 0.06, anthracite);
+      const glass = box(w, h, 0.07, mat);
+      glass.position.z = 0.01;
+      g.add(frame, glass);
+      return g;
+    }
+    function neighbour({ w = 3.6, d = 3.2, h = 2.6, upper = true, gable = false, seed = 1 }) {
+      const g = new THREE.Group();
+      const body = rbox(w, h, d, clay, 0.05);
+      body.position.y = h / 2;
+      g.add(body);
+      let top = h;
+      if (upper) {
+        const uw = w * 0.72, uh = 2.2, ud = d * 0.9;
+        const up = rbox(uw, uh, ud, clayShade, 0.05);
+        up.position.set((seed % 2 ? -1 : 1) * (w - uw) / 2, h + uh / 2, -0.1);
+        g.add(up);
+        top = h + uh;
+        const slab = box(uw + 0.2, 0.12, ud + 0.2, clay);
+        slab.position.set(up.position.x, top + 0.06, up.position.z);
+        g.add(slab);
+      }
+      if (gable) {
+        const half = d / 2 + 0.15;
+        const shape = new THREE.Shape([new THREE.Vector2(-half, 0), new THREE.Vector2(half, 0), new THREE.Vector2(0, 1.5)]);
+        const L = w + 0.2;
+        const rg = new THREE.ExtrudeGeometry(shape, { depth: L, bevelEnabled: false });
+        rg.rotateY(Math.PI / 2);
+        rg.translate(-L / 2, top, 0);
+        g.add(new THREE.Mesh(rg, clayShade));
+        top += 1.5;
+      }
+      const gm = std(0xcfd3d2, 0.3, 0.1);
+      const win = makeWindow(1.6, 1.3, gm);
+      win.position.set(-w / 4, 1.2, d / 2 + 0.02);
+      g.add(win);
+      const door = makeWindow(0.8, 1.9, gm);
+      door.position.set(w / 4, 1.0, d / 2 + 0.02);
+      g.add(door);
+      g.userData.ridge = new THREE.Vector3(w / 2 - 0.2, top, 0);
+      return g;
+    }
+
+    const HERO = new THREE.Vector3(0.6, 0, 5.1);
+    const lots = [
+      { p: [-7.2, 0, -5.2], o: { upper: true, seed: 1 } },
+      { p: [0, 0, -5.4], o: { upper: false, gable: true, seed: 2, w: 3.8 } },
+      { p: [7.0, 0, -5.2], o: { upper: true, seed: 3, w: 3.2 } },
+      { p: [-7.0, 0, 5.2], o: { upper: false, gable: true, seed: 4, w: 3.4 } },
+    ];
+    const houses = lots.map((l) => {
+      const hs = neighbour(l.o);
+      hs.position.set(...l.p);
+      scene.add(hs);
+      return hs;
+    });
+
+    // The hero: rendered ground floor, timber-clad cantilevered upper floor, flat roof.
+    const hero = new THREE.Group();
+    const HW = 4.4, HD = 3.4, HH = 2.6, UW = 3.4, UD = 3.8, UH = 2.3;
+    const lower = rbox(HW, HH, HD, render, 0.05);
+    lower.position.y = HH / 2;
+    hero.add(lower);
+    const upper = box(UW, UH, UD, wood);
+    upper.position.set(-0.45, HH + UH / 2, 0.2);
+    hero.add(upper);
+    const roofSlab = box(UW + 0.3, 0.16, UD + 0.3, anthracite);
+    roofSlab.position.set(upper.position.x, HH + UH + 0.08, upper.position.z);
+    hero.add(roofSlab);
+    const terraceEdge = box(HW - UW + 0.45 - 0.1, 0.5, HD, render);
+    // glass balustrade on the terrace of the ground floor roof
+    const balGlass = std(0xd9e6e6, 0.05, 0.1, { transparent: true, opacity: 0.35 });
+    const bal = box(0.04, 0.6, HD - 0.2, balGlass);
+    bal.position.set(HW / 2 - 0.08, HH + 0.3, 0);
+    hero.add(bal);
+    // Glazing: dark glass that glows warm from inside when the house is free.
+    const heroGlass = new THREE.MeshStandardMaterial({ color: 0x1d2a30, roughness: 0.06, metalness: 0.2, emissive: 0xffc98a, emissiveIntensity: 0 });
+    const bay = makeWindow(2.4, 1.95, heroGlass);
+    bay.position.set(0.55, 1.05, HD / 2 + 0.02);
+    hero.add(bay);
+    const strip = makeWindow(2.3, 0.85, heroGlass);
+    strip.position.set(upper.position.x, HH + 1.3, upper.position.z + UD / 2 + 0.02);
+    hero.add(strip);
+    const sideWin = makeWindow(1.2, 1.5, heroGlass);
+    sideWin.rotation.y = Math.PI / 2;
+    sideWin.position.set(HW / 2 + 0.02, 1.25, -0.5);
+    hero.add(sideWin);
+    const door = box(0.95, 2.05, 0.06, anthracite);
+    door.position.set(-1.45, 1.03, HD / 2 + 0.03);
+    hero.add(door);
+    hero.position.copy(HERO);
+    scene.add(hero);
+    const heroRidge = new THREE.Vector3(HERO.x + upper.position.x + UW / 2 - 0.1, HH + UH + 0.16, HERO.z + upper.position.z - UD / 2 + 0.3);
+
+    // Sculpted trees: clay trunks, soft sage crowns.
+    const crownMat = std(0xb9c9b1, 0.9);
+    const trunkMat = std(0x8d8a82, 0.8);
+    function tree(x, z, s) {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * s, 0.08 * s, 1.4 * s, 8), trunkMat);
+      trunk.position.y = 0.7 * s;
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.62 * s, 20, 14), crownMat);
+      crown.scale.y = 1.25;
+      crown.position.y = 1.75 * s;
+      g.add(trunk, crown);
+      g.position.set(x, 0, z);
+      scene.add(g);
+    }
+    [[-11, -9.5], [-3.6, -10], [3.6, -9.6], [11, -9.2], [-11.2, 9.6], [-3.4, 10.4], [4.8, 10.6], [11.6, 9.8], [12, 2.9], [9.6, 6.4], [11.4, 5.2], [-12, 2.8], [-3.2, 3.6]].forEach(([x, z]) =>
+      tree(x, z, 0.9 + rand() * 0.35),
+    );
+
+    // ---------- pylon and cables ----------
+    const PYLON = new THREE.Vector3(-10.2, 0, -10.4);
+    const steel = std(0x9ea3a3, 0.45, 0.6);
+    const pylon = new THREE.Group();
+    const legs = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    for (const [sx, sz] of legs) {
+      const a = new THREE.Vector3(sx * 0.9, 0, sz * 0.9), b = new THREE.Vector3(sx * 0.2, 8.2, sz * 0.2);
+      const len = a.distanceTo(b);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, len, 6), steel);
+      leg.position.copy(a.clone().add(b).multiplyScalar(0.5));
+      leg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+      pylon.add(leg);
+    }
+    for (let y = 1.2; y < 8; y += 1.4) {
+      const k = y / 8.2, s = lerp(0.9, 0.2, k) * 2;
+      const ring = box(s, 0.05, s, steel);
+      ring.position.y = y;
+      pylon.add(ring);
+    }
+    for (const [y, w] of [[6.9, 3.6], [8.0, 2.6]]) {
+      const arm = box(w, 0.1, 0.1, steel);
+      arm.position.y = y;
+      arm.rotation.y = Math.PI / 4;
+      pylon.add(arm);
+    }
+    pylon.position.copy(PYLON);
+    scene.add(pylon);
+    const armTip = (i) => {
+      const off = [-1.6, -0.8, 0, 0.8, 1.6, 1.2][i % 6];
+      return new THREE.Vector3(PYLON.x + off * 0.707, 6.85, PYLON.z - off * 0.707);
+    };
+    const cableMat = new THREE.MeshStandardMaterial({ color: 0x1f2426, roughness: 0.5, transparent: true });
+    function cablePoints(a, b, sag, upto = 1) {
+      const pts = [];
+      for (let i = 0; i <= 40; i++) {
+        const s = (i / 40) * upto;
+        const p = a.clone().lerp(b, s);
+        p.y -= sag * 4 * s * (1 - s);
+        pts.push(p);
+      }
+      return pts;
+    }
+    const tubeFrom = (pts) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.025, 6, false);
+    const ends = [...houses.map((hs) => hs.position.clone().add(hs.userData.ridge)), heroRidge];
+    const cables = ends.map((end, i) => {
+      const start = armTip(i);
+      const sag = 1.3 + 0.15 * i;
+      const mesh = new THREE.Mesh(tubeFrom(cablePoints(start, end, sag)), cableMat);
+      scene.add(mesh);
+      return { start, end, sag, mesh };
+    });
+    const heroCable = cables[cables.length - 1];
+    heroCable.mesh.material = cableMat.clone();
+
+    const beadMat = new THREE.MeshStandardMaterial({ color: 0x5b6466, roughness: 0.4 });
+    const beads = [];
+    cables.forEach((c, i) => {
+      for (let k = 0; k < 2; k++) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), beadMat);
+        m.visible = false;
+        scene.add(m);
+        beads.push({ c, m, phase: k / 2 + i * 0.13 });
+      }
+    });
+
+    // ---------- the equipment ----------
+    // Solar array on tilted aluminium racks across the flat roof (2 rows x 3).
+    const roofY = HH + UH + 0.16;
+    const panelsRoot = new THREE.Group();
+    panelsRoot.position.set(HERO.x + upper.position.x, roofY, HERO.z + upper.position.z);
+    scene.add(panelsRoot);
+    const panels = [];
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 3; c++) {
+        const g = new THREE.Group();
+        const frame = rbox(0.98, 0.05, 1.45, aluMat, 0.02);
+        const cell = box(0.92, 0.02, 1.39, cellMat);
+        cell.position.y = 0.03;
+        const tilt = new THREE.Group();
+        tilt.add(frame, cell);
+        tilt.rotation.x = 0.32; // facing the sun (+z, toward camera)
+        tilt.position.y = 0.32;
+        const leg = box(0.05, 0.42, 0.05, aluMat);
+        leg.position.set(0, 0.2, -0.55);
+        g.add(tilt, leg);
+        g.userData.base = new THREE.Vector3((c - 1) * 1.04, 0, (r - 0.5) * 1.65);
+        g.visible = false;
+        panelsRoot.add(g);
+        panels.push(g);
+      }
+    }
+
+    // Wall battery: slim white unit with a mint light bar.
+    const battery = new THREE.Group();
+    const batBody = rbox(0.62, 1.15, 0.2, std(0x2b3134, 0.35, 0.3), 0.06);
+    batBody.position.y = 0.58;
+    const gauge = box(0.07, 0.9, 0.02, mint);
+    gauge.geometry.translate(0, 0.45, 0);
+    gauge.position.set(-0.2, 0.13, 0.105);
+    battery.add(batBody, gauge);
+    battery.position.set(HERO.x - 0.4, 0.25, HERO.z + HD / 2 + 0.11);
+    scene.add(battery);
+
+    // Driveway, charger, car.
+    const CAR_PARK = new THREE.Vector3(HERO.x + 3.75, 0, HERO.z + 0.7);
+    const drive = box(2.1, 0.05, 4.0, std(0xd2d0ca, 0.85));
+    drive.position.set(CAR_PARK.x, 0.03, HERO.z + 0.2);
+    scene.add(drive);
+    const charger = new THREE.Group();
+    const post = rbox(0.24, 1.15, 0.18, std(0x012b26, 0.4, 0.2), 0.05);
+    post.position.y = 0.58;
+    const face = box(0.02, 0.36, 0.1, mint);
+    face.position.set(0.125, 0.85, 0);
+    charger.add(post, face);
+    charger.position.set(HERO.x + HW / 2 + 0.45, 0, HERO.z + 1.3);
+    scene.add(charger);
+
+    const car = new THREE.Group();
+    const paint = new THREE.MeshPhysicalMaterial({ color: 0xf2f2f0, roughness: 0.28, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.08 });
+    const tint = std(0x161b1e, 0.08, 0.3);
+    const body = rbox(0.98, 0.45, 2.05, paint, 0.16);
+    body.position.y = 0.42;
+    const cabin = rbox(0.86, 0.42, 1.15, tint, 0.18);
+    cabin.position.set(0, 0.8, -0.1);
+    car.add(body, cabin);
+    const tyre = std(0x1b1d1e, 0.7);
+    const rim = std(0xb7babc, 0.3, 0.8);
+    for (const [x, z] of [[0.47, 0.65], [-0.47, 0.65], [0.47, -0.65], [-0.47, -0.65]]) {
+      const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.16, 20), tyre);
+      wh.rotation.z = Math.PI / 2;
+      wh.position.set(x, 0.21, z);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.17, 16), rim);
+      hub.rotation.z = Math.PI / 2;
+      hub.position.copy(wh.position);
+      car.add(wh, hub);
+    }
+    const lightBar = box(0.8, 0.04, 0.02, mint);
+    lightBar.position.set(0, 0.52, 1.03);
+    car.add(lightBar);
+    scene.add(car);
+
+    const plugCable = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+        new THREE.Vector3(charger.position.x + 0.13, 0.85, charger.position.z),
+        new THREE.Vector3(charger.position.x + 0.45, 0.12, charger.position.z + 0.25),
+        new THREE.Vector3(CAR_PARK.x - 0.5, 0.55, CAR_PARK.z + 0.45),
+      ]), 30, 0.03, 6, false),
+      std(0x012b26, 0.5),
+    );
+    plugCable.visible = false;
+    scene.add(plugCable);
+
+    // Heat pump / AC unit on the side wall.
+    const ac = new THREE.Group();
+    const acBody = rbox(0.36, 0.7, 1.0, std(0xe8eaeb, 0.4, 0.1), 0.04);
+    const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 32), anthracite);
+    grille.rotation.z = Math.PI / 2;
+    grille.position.set(0.19, 0, 0.15);
+    const fan = new THREE.Group();
+    for (let i = 0; i < 4; i++) {
+      const bl = box(0.02, 0.4, 0.09, std(0xbfc5c7, 0.4, 0.4));
+      bl.rotation.x = (i * Math.PI) / 2;
+      fan.add(bl);
+    }
+    fan.position.set(0.21, 0, 0.15);
+    ac.add(acBody, grille, fan);
+    ac.position.set(HERO.x + HW / 2 + 0.19, 0.55, HERO.z - 0.9);
+    scene.add(ac);
+
+    // Mint energy: roof → battery → charger → car.
+    const flowPath = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(HERO.x - 0.4, HH + 0.05, HERO.z + HD / 2 + 0.25),
+      new THREE.Vector3(HERO.x - 0.4, 1.6, HERO.z + HD / 2 + 0.3),
+      new THREE.Vector3(HERO.x - 0.4, 0.07, HERO.z + HD / 2 + 0.55),
+      new THREE.Vector3(HERO.x + 1.6, 0.07, HERO.z + HD / 2 + 0.55),
+      new THREE.Vector3(charger.position.x, 0.07, HERO.z + 2.0),
+      new THREE.Vector3(CAR_PARK.x - 0.55, 0.07, CAR_PARK.z + 0.6),
+    ], false, "catmullrom", 0.1);
+    const dashes = [];
+    for (let i = 0; i < 22; i++) {
+      const m = box(0.14, 0.03, 0.14, mint);
+      m.visible = false;
+      scene.add(m);
+      dashes.push(m);
+    }
+
+    // Everything casts and receives soft shadows, except the thin energy markers.
+    scene.traverse((o) => {
+      if (o.isMesh && o.material !== mint) {
+        o.castShadow = true;
+        o.receiveShadow = true;
+      }
+    });
+    cables.forEach((c) => (c.mesh.castShadow = false));
+
+    // ---------- camera: long lens, slow architectural moves ----------
+    const EL = THREE.MathUtils.degToRad(31);
+    const keys = [
+      { t: 0.0, x: -0.8, y: 1.4, z: -0.2, w: 27, az: 42 },
+      { t: 6.6, x: -0.4, y: 1.0, z: 0.8, w: 24, az: 46 },
+      { t: 8.8, x: HERO.x + 0.6, y: 2.4, z: HERO.z, w: 12.0, az: 38 },
+      { t: 11.4, x: HERO.x - 0.1, y: 3.6, z: HERO.z + 0.2, w: 10.4, az: 32 },
+      { t: 14.0, x: HERO.x - 0.2, y: 1.6, z: HERO.z + 1.4, w: 10.8, az: 44 },
+      { t: 16.9, x: HERO.x + 2.6, y: 1.2, z: HERO.z + 1.0, w: 11.4, az: 52 },
+      { t: 19.0, x: HERO.x + 1.4, y: 1.4, z: HERO.z, w: 11.2, az: 60 },
+      { t: 21.2, x: 0.6, y: 0.8, z: 2.6, w: 20.5, az: 44 },
+      { t: 26.6, x: 0.4, y: 0.8, z: 2.2, w: 21.5, az: 38 },
+    ];
+    function camAt(t) {
+      let i = 0;
+      while (i < keys.length - 2 && t > keys[i + 1].t) i++;
+      const a = keys[i], b = keys[i + 1];
+      const k = inOut(seg(t, a.t, b.t));
+      return { x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), z: lerp(a.z, b.z, k), w: lerp(a.w, b.w, k), az: lerp(a.az, b.az, k) };
+    }
+    const target = new THREE.Vector3();
+    const halfH = THREE.MathUtils.degToRad(camera.fov / 2);
+    function placeCamera(t) {
+      const c = camAt(t);
+      const az = THREE.MathUtils.degToRad(c.az);
+      // distance so that c.w world units fill the frame width
+      const hw = Math.atan(Math.tan(halfH) * (W / H));
+      const dist = c.w / 2 / Math.tan(hw);
+      target.set(c.x, c.y, c.z);
+      const dir = new THREE.Vector3(Math.sin(az) * Math.cos(EL), Math.sin(EL), Math.cos(az) * Math.cos(EL));
+      camera.position.copy(target).addScaledVector(dir, dist);
+      camera.lookAt(target);
+      // shift the subject below the title band
+      camera.setViewOffset(W, H, 0, -H * 0.17, W, H);
+      camera.updateProjectionMatrix();
+    }
+
+    // ---------- the frame at t ----------
+    let lastCableKey = -1;
+    host.render = (t) => {
+      placeCamera(t);
+
+      // Morning light warms and lifts as the house starts producing.
+      const warmK = seg(t, 8.6, 10.4);
+      sun.color.setHex(0xe9edf0).lerp(new THREE.Color(0xfff0dc), warmK);
+      sun.intensity = lerp(2.4, 3.1, warmK);
+      renderer.toneMappingExposure = lerp(0.98, 1.08, warmK);
+
+      const beadOn = t > 3.3 && t < 7.2;
+      for (const b of beads) {
+        b.m.visible = beadOn;
+        if (!beadOn) continue;
+        const s = ((t - 3.3) * 0.5 + b.phase) % 1;
+        b.m.position.copy(cablePoints(b.c.start, b.c.end, b.c.sag)[Math.round(s * 40)]);
+      }
+
+      // Panels lower onto their racks one by one, a measured mechanical settle.
+      panels.forEach((g, i) => {
+        const t0 = 9.35 + i * 0.13;
+        const k = seg(t, t0, t0 + 0.55);
+        g.visible = t >= t0;
+        g.position.copy(g.userData.base);
+        g.position.y += (1 - outQuint(k)) * 2.4;
+      });
+      cellMat.emissiveIntensity = 0.12 * seg(t, 19.5, 20.4);
+
+      // Battery slides out of the wall plane, then its light bar fills.
+      const bk = outQuint(seg(t, 11.75, 12.3));
+      battery.visible = t >= 11.75;
+      battery.position.z = HERO.z + HD / 2 + lerp(-0.15, 0.11, bk);
+      gauge.scale.y = Math.max(0.001, inOut(seg(t, 12.35, 13.6)));
+
+      // The car arrives along the road and turns into the drive.
+      const ca = seg(t, 14.15, 15.05), cb = seg(t, 15.05, 15.8);
+      car.visible = t >= 14.15;
+      if (cb <= 0) {
+        car.position.set(lerp(15, CAR_PARK.x, outCubic(ca)), 0, 0.65);
+        car.rotation.y = -Math.PI / 2;
+      } else {
+        const k = inOut(cb);
+        car.position.set(CAR_PARK.x, 0, lerp(0.65, CAR_PARK.z, k));
+        car.rotation.y = lerp(-Math.PI / 2, 0, k);
+      }
+      const chk = outQuint(seg(t, 14.0, 14.5));
+      charger.visible = t >= 14.0;
+      charger.scale.set(1, Math.max(0.001, chk), 1);
+      plugCable.visible = t >= 15.95;
+
+      const ak = outBack(seg(t, 17.25, 17.75), 1.1);
+      ac.visible = t >= 17.25;
+      ac.scale.setScalar(Math.max(0.001, ak));
+      fan.rotation.x = t * 8;
+
+      // Liberation: the grid cable slackens and withdraws to the pylon.
+      const rk = seg(t, 19.25, 20.15);
+      const key = Math.round(rk * 60);
+      if (key !== lastCableKey) {
+        lastCableKey = key;
+        const upto = lerp(1, 0.35, inOut(rk));
+        const sag = lerp(heroCable.sag, heroCable.sag + 2.4, outCubic(rk));
+        heroCable.mesh.geometry.dispose();
+        heroCable.mesh.geometry = tubeFrom(cablePoints(heroCable.start, heroCable.end, sag, upto));
+      }
+      heroCable.mesh.material.opacity = 1 - seg(t, 20.0, 20.6);
+      heroCable.mesh.visible = t < 20.6;
+
+      heroGlass.emissiveIntensity = 0.9 * outCubic(seg(t, 19.7, 20.4));
+
+      const flowOn = t >= 19.9;
+      dashes.forEach((m, i) => {
+        m.visible = flowOn;
+        if (!flowOn) return;
+        const s = (((t - 19.9) * 0.28 + i / dashes.length) % 1 + 1) % 1;
+        m.position.copy(flowPath.getPointAt(s));
+        m.scale.setScalar(Math.max(0.001, seg(t, 19.9, 20.4)));
+      });
+
+      renderer.render(scene, camera);
+    };
+    host.render(host.clock.t);
+    host.ready();
+  </script>
+</template>
