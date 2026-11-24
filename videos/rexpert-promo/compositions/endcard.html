@@ -1,0 +1,97 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      font-family: "Inter", sans-serif;
+      color: #012b26;
+      overflow: hidden;
+    }
+    #end-bg {
+      position: absolute;
+      inset: 0;
+      background: #f4f4f4;
+    }
+    #end-wipe {
+      position: absolute;
+      inset: 0;
+      background: #79ffbb;
+    }
+    #end-logo {
+      position: absolute;
+      left: 110px;
+      top: 300px;
+      width: 440px;
+      height: 440px;
+    }
+    #end-tag {
+      position: absolute;
+      left: 130px;
+      width: 650px;
+      top: 770px;
+    }
+    #end-tag .ln {
+      display: block;
+      overflow: hidden;
+    }
+    #end-tag .ln span {
+      display: block;
+      font-weight: 900;
+      font-size: 76px;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+    }
+    #end-cta {
+      position: absolute;
+      left: 130px;
+      width: 640px;
+      top: 980px;
+      height: 112px;
+      border-radius: 22px;
+      background: #012b26;
+      color: #79ffbb;
+      font-weight: 800;
+      font-size: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    #end-url {
+      position: absolute;
+      left: 130px;
+      width: 650px;
+      top: 1128px;
+      font-weight: 700;
+      font-size: 30px;
+      opacity: 0.8;
+    }
+  </style>
+  <div id="root" data-composition-id="endcard" data-width="1080" data-height="1920">
+    <div id="end-bg"></div>
+    <div id="end-wipe"></div>
+    <img id="end-logo" src="assets/logo-rexpert.png" alt="R Expert Ecologistique" />
+    <div id="end-tag">
+      <span class="ln"><span>Votre énergie,</span></span>
+      <span class="ln"><span>votre liberté.</span></span>
+    </div>
+    <div id="end-cta">Calculez votre avantage en 1 minute</div>
+    <div id="end-url">rexpert-energie-ecologistique.be</div>
+  </div>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      // Mint wipe rises over the world, the page settles beneath, the wipe leaves upward.
+      tl.fromTo("#end-bg", { yPercent: 100 }, { yPercent: 0, duration: 0.01 }, 0.45);
+      tl.fromTo("#end-wipe", { yPercent: 100 }, { yPercent: 0, duration: 0.45, ease: "power3.inOut" }, 0);
+      tl.to("#end-wipe", { yPercent: -100, duration: 0.45, ease: "power3.inOut" }, 0.5);
+      // The mark is performed: it opens out from its sun like a sunrise.
+      tl.fromTo("#end-logo", { clipPath: "circle(0% at 50% 36%)", scale: 0.86 }, { clipPath: "circle(75% at 50% 36%)", scale: 1, duration: 0.8, ease: "power3.out" }, 0.7);
+      tl.fromTo("#end-tag .ln > span", { yPercent: 110 }, { yPercent: 0, duration: 0.4, ease: "power3.out", stagger: 0.12 }, 1.45);
+      tl.fromTo("#end-cta", { opacity: 0, y: 40, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 2.9);
+      tl.fromTo("#end-url", { opacity: 0 }, { opacity: 0.8, duration: 0.4, ease: "power2.out" }, 3.4);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["endcard"] = tl;
+    })();
+  </script>
+</template>
