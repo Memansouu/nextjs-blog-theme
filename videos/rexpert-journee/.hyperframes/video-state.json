@@ -389,15 +389,14 @@
   },
   "checks": {
     "latest": {
-      "revision": "7169f210-9cf1-4a14-94b5-8dc444eb4021",
-      "id": "d6137a1e-42f1-4f5e-a3e1-39a911ba25cd"
+      "revision": null,
+      "id": "658e94f5-d48f-486a-b8ef-869179b4416e"
     },
     "revisions": {
       "7169f210-9cf1-4a14-94b5-8dc444eb4021": [
         {
           "id": "d6137a1e-42f1-4f5e-a3e1-39a911ba25cd",
           "scope": "project",
-          "report": "/home/user/nextjs-blog-theme/videos/rexpert-journee/.hyperframes/artifacts/checks/d6137a1e-42f1-4f5e-a3e1-39a911ba25cd.json",
           "metadata": {
             "ok": true,
             "browserSkipped": false,
@@ -427,7 +426,9 @@
           "revision": "7169f210-9cf1-4a14-94b5-8dc444eb4021",
           "inputFingerprint": "a6a928b1f13bced517dd1e91fd376952d88b2e7667fd8f7e59cae04b3c744969",
           "inputScope": "local-project-files",
-          "attribution": "recorded-revision"
+          "attribution": "recorded-revision",
+          "status": "cleaned",
+          "cleanedAfterRender": "139d0335-3225-4d9b-8ddd-302775cd81a8"
         }
       ]
     },
@@ -770,13 +771,14 @@
   },
   "renders": {
     "latest": {
-      "id": "a07ba459-c6ee-4b9b-a1e7-8b9413443b96",
-      "completedAt": 1795604307160,
-      "output": "/home/user/nextjs-blog-theme/videos/rexpert-journee/renders/rexpert-journee-soleil-9x16.mp4",
+      "id": "139d0335-3225-4d9b-8ddd-302775cd81a8",
+      "completedAt": 1795613153904,
+      "output": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/journee-raw.mp4",
       "status": "completed",
-      "revision": "b453198c-dead-4edc-8f13-772d288e3a39"
+      "revision": "7dbf93e4-d070-488a-bf42-c03d6e357787"
     },
     "retainedRevisions": [
+      "7dbf93e4-d070-488a-bf42-c03d6e357787",
       "b453198c-dead-4edc-8f13-772d288e3a39"
     ]
   },
