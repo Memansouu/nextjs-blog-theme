@@ -521,7 +521,8 @@
     }
 
     const battery = new THREE.Group();
-    const batBody = rbox(0.66, 1.2, 0.2, std(0xf4f4f2, 0.35, 0.05), 0.05);
+    const batMat = std(0xf4f4f2, 0.35, 0.05, { emissive: 0x79ffbb, emissiveIntensity: 0 });
+    const batBody = rbox(0.66, 1.2, 0.2, batMat, 0.05);
     batBody.position.y = 0.6;
     const batBand = box(0.66, 0.08, 0.205, anthracite);
     batBand.position.y = 1.05;
@@ -531,7 +532,9 @@
     gauge.geometry.translate(0, 0.4, 0);
     gauge.position.set(0.22, 0.12, 0.11);
     battery.add(batBody, batBand, gaugeBack, gauge);
-    battery.position.set(HERO.x - 0.55, 0.3, HERO.z + HD / 2 + 0.11);
+    // On the side wall, facing the camera's arc, so its charge bar reads.
+    battery.rotation.y = Math.PI / 2;
+    battery.position.set(HERO.x + HW / 2 + 0.11, 0.3, HERO.z + 1.0);
     scene.add(battery);
 
     const charger = new THREE.Group();
@@ -587,7 +590,8 @@
     scene.add(plugCable);
 
     const ac = new THREE.Group();
-    const acBody = rbox(0.4, 0.75, 1.05, std(0xe8eaeb, 0.4, 0.1), 0.04);
+    const acMat = std(0xe8eaeb, 0.4, 0.1, { emissive: 0x79ffbb, emissiveIntensity: 0 });
+    const acBody = rbox(0.4, 0.75, 1.05, acMat, 0.04);
     const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 36), anthracite);
     grille.rotation.z = Math.PI / 2;
     grille.position.set(0.21, 0, 0.15);
@@ -602,40 +606,61 @@
     ac.position.set(HERO.x + HW / 2 + 0.21, 0.55, HERO.z - 0.95);
     scene.add(ac);
 
-    // Energy: thin mint pulses on the walls and ground.
+    // Energy: arcs of light that draw from the source to the device, pulses running along them.
     const v = (x, y, z) => new THREE.Vector3(x, y, z);
-    const fz = HERO.z + HD / 2 + 0.08;
-    const routes = {
-      house: new THREE.CatmullRomCurve3([v(HERO.x - 0.5, roofY, HERO.z + upper.position.z + UD / 2 + 0.1), v(HERO.x - 0.5 + UW / 2 + 0.3, HH + 0.15, fz), v(HERO.x + 0.5, 2.35, fz)]),
-      battery: new THREE.CatmullRomCurve3([v(HERO.x - 0.9, roofY, HERO.z + upper.position.z + UD / 2 + 0.1), v(HERO.x - 0.7, HH + 0.1, fz), v(HERO.x - 0.55, 1.6, fz + 0.05)]),
-      ac: new THREE.CatmullRomCurve3([v(HERO.x + 0.6, roofY, HERO.z), v(HERO.x + HW / 2 + 0.06, HH, HERO.z - 0.5), v(HERO.x + HW / 2 + 0.06, 1.0, HERO.z - 0.95)]),
-      car: new THREE.CatmullRomCurve3([v(HERO.x - 0.4, 0.35, fz + 0.08), v(1.0, 0.05, 2.0), v(2.25, 0.05, 1.35), v(CAR_PARK.x - 0.95, 0.7, CAR_PARK.z + 1.0)]),
-      night: new THREE.CatmullRomCurve3([v(HERO.x - 0.55, 1.1, fz + 0.12), v(HERO.x - 0.1, 0.2, fz + 0.4), v(HERO.x + 0.5, 1.2, fz + 0.1)]),
+    const BAT = v(HERO.x + HW / 2 + 0.22, 1.1, HERO.z + 1.0);
+    const arcs = {
+      house: new THREE.QuadraticBezierCurve3(v(-0.6, 5.8, 0.6), v(1.2, 5.6, 3.8), v(-0.1, 1.45, HERO.z + HD / 2 + 0.06)),
+      battery: new THREE.QuadraticBezierCurve3(v(-0.4, 5.8, 0.2), v(3.0, 5.2, 1.4), BAT.clone()),
+      ac: new THREE.QuadraticBezierCurve3(v(-0.4, 5.8, -0.6), v(3.1, 4.4, -0.9), v(HERO.x + HW / 2 + 0.45, 0.9, HERO.z - 0.95)),
+      car: new THREE.QuadraticBezierCurve3(BAT.clone(), v(3.2, 2.8, 1.0), v(CAR_PARK.x - 0.55, 1.3, CAR_PARK.z + 0.2)),
+      night: new THREE.QuadraticBezierCurve3(BAT.clone(), v(1.8, 3.0, 2.8), v(0.3, 1.45, HERO.z + HD / 2 + 0.06)),
     };
-    const dashGroups = {};
-    for (const k of Object.keys(routes)) {
-      dashGroups[k] = [];
-      for (let i = 0; i < 16; i++) {
-        const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), mint);
-        m.visible = false;
-        scene.add(m);
-        dashGroups[k].push(m);
-      }
-    }
-    function flow(name, t, a, b, speed = 0.45) {
-      const on = t >= a && t < b;
-      const env = Math.min(seg(t, a, a + 0.4), 1 - seg(t, b - 0.4, b));
-      dashGroups[name].forEach((m, i) => {
-        m.visible = on && env > 0.01;
-        if (!m.visible) return;
-        const s = (((t - a) * speed + i / 16) % 1 + 1) % 1;
-        m.position.copy(routes[name].getPointAt(s));
-        m.scale.setScalar(Math.max(0.001, env));
+    const beamVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
+    const beamFrag = `uniform float uDraw; uniform float uTail; uniform float uTime; uniform float uAlpha; uniform float uCore; uniform vec3 uColor; varying vec2 vUv;
+      void main(){
+        float x = vUv.x;
+        if (x > uDraw || x < uTail) discard;
+        float pulse = pow(fract(x * 4.0 - uTime * 1.2), 12.0);
+        float head = smoothstep(0.0, 0.05, uDraw - x);
+        float edge = 1.0 - abs(vUv.y - 0.5) * 2.0;
+        float a = uAlpha * head * (uCore > 0.5 ? (0.65 + 0.35 * pulse) : (0.3 + 0.6 * pulse) * edge);
+        gl_FragColor = vec4(uColor * (1.0 + 2.2 * pulse), a);
+      }`;
+    function beamMat(core) {
+      return new THREE.ShaderMaterial({
+        uniforms: { uDraw: { value: 0 }, uTail: { value: 0 }, uTime: { value: 0 }, uAlpha: { value: 1 }, uCore: { value: core ? 1 : 0 }, uColor: { value: new THREE.Color(0x79ffbb) } },
+        vertexShader: beamVert, fragmentShader: beamFrag,
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
       });
+    }
+    const beams = {};
+    for (const [k, curve] of Object.entries(arcs)) {
+      const core = new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 0.05, 8, false), beamMat(true));
+      const halo = new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 0.17, 12, false), beamMat(false));
+      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), new THREE.MeshBasicMaterial({ color: 0xd9ffe9, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+      for (const m of [core, halo, spark]) { m.visible = false; m.userData.noShadow = true; scene.add(m); }
+      beams[k] = { curve, core, halo, spark };
+    }
+    // Returns how strongly this flow is on (0..1) so the device can answer it.
+    function flow(name, t, a, b) {
+      const bm = beams[name];
+      const on = t >= a && t < b;
+      const draw = outCubic(seg(t, a, a + 0.8));
+      const tail = inOut(seg(t, b - 0.6, b));
+      for (const m of [bm.core, bm.halo]) {
+        m.visible = on;
+        m.material.uniforms.uDraw.value = draw;
+        m.material.uniforms.uTail.value = tail;
+        m.material.uniforms.uTime.value = t;
+      }
+      bm.spark.visible = on && draw < 0.999;
+      if (bm.spark.visible) bm.spark.position.copy(bm.curve.getPointAt(Math.min(draw, 1)));
+      return on ? seg(t, a + 0.6, a + 0.9) * (1 - seg(t, b - 0.6, b)) : 0;
     }
 
     scene.traverse((o) => {
-      if (o.isMesh && o !== skyDome && o !== ground && o.material !== mint && o.material !== chargeLed && o.material !== glass) {
+      if (o.isMesh && !o.userData.noShadow && o !== skyDome && o !== ground && o.material !== mint && o.material !== chargeLed && o.material !== glass) {
         o.castShadow = true;
         o.receiveShadow = true;
       }
@@ -693,11 +718,15 @@
 
       cellMat.emissiveIntensity = 0.08 * day * (1 - night);
 
-      flow("house", t, 2.9, 6.6);
-      flow("battery", t, 7.0, 9.9);
-      flow("ac", t, 10.2, 14.0);
-      flow("car", t, 15.6, 17.6);
-      flow("night", t, 18.4, 26.6, 0.3);
+      const fHouse = flow("house", t, 2.9, 6.5);
+      const fBat = flow("battery", t, 6.9, 9.7);
+      const fAc = flow("ac", t, 10.1, 13.9);
+      const fCar = flow("car", t, 15.6, 17.4);
+      const fNight = flow("night", t, 18.2, 26.6);
+      // Each device answers the energy it receives.
+      const beat = 0.5 + 0.5 * Math.sin(t * 6);
+      batMat.emissiveIntensity = 0.25 * fBat * beat + 0.15 * (fCar + fNight) * beat;
+      acMat.emissiveIntensity = 0.2 * fAc * beat;
 
       gauge.scale.y = Math.max(0.001, lerp(0.25, 1.0, inOut(seg(t, 7.1, 9.6))) - lerp(0, 0.35, seg(t, 18.4, 26.6)) - lerp(0, 0.15, seg(t, 15.6, 17.4)));
       fan.rotation.x = t * 2 + 10 * clamp(t - 10.2, 0, 4.2);
@@ -707,10 +736,10 @@
       car.position.set(CAR_PARK.x, 0, lerp(11, CAR_PARK.z, outQuint(ca)));
       headMat.emissiveIntensity = lerp(0.2, 2.0, seg(h, 18, 19.5));
       plugCable.visible = t >= 15.5;
-      chargeLed.opacity = t < 15.6 ? 0.2 : 0.4 + 0.6 * Math.abs(Math.sin((t - 15.6) * 2.4));
+      chargeLed.opacity = t < 15.6 ? 0.2 : 0.4 + 0.6 * Math.abs(Math.sin((t - 15.6) * 2.4)) * Math.max(fCar, 0.3);
 
       const lit = seg(h, 18.8, 20.2);
-      roomMat.emissiveIntensity = lerp(0.0, 2.2, lit);
+      roomMat.emissiveIntensity = lerp(0.0, 2.2, lit) + 0.35 * fHouse;
       wallLamps.forEach((m) => (m.emissiveIntensity = lerp(0, 3, lit)));
 
       placeCamera(t);
