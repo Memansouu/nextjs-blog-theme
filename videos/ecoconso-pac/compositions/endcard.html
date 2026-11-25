@@ -1,0 +1,115 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      font-family: "Inter", sans-serif;
+      color: #27334b;
+      overflow: hidden;
+    }
+    #end-bg {
+      position: absolute;
+      inset: 0;
+      background: #ffffff;
+    }
+    #end-wipe {
+      position: absolute;
+      inset: 0;
+      background: #8ab935;
+    }
+    #end-logo {
+      position: absolute;
+      left: 330px;
+      top: 270px;
+      width: 420px;
+      height: 420px;
+    }
+    #end-tag {
+      position: absolute;
+      left: 140px;
+      width: 800px;
+      top: 715px;
+      text-align: center;
+    }
+    #end-tag .ln {
+      display: block;
+      overflow: hidden;
+    }
+    #end-tag .ln span {
+      display: block;
+      font-weight: 900;
+      font-size: 54px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    #end-tag .ln span em {
+      font-style: normal;
+      color: #6f9a22;
+    }
+    #end-cta {
+      position: absolute;
+      left: 260px;
+      width: 560px;
+      top: 900px;
+      height: 120px;
+      border-radius: 20px;
+      background: #27334b;
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.1;
+      padding: 0 30px;
+    }
+    #end-phone {
+      position: absolute;
+      left: 140px;
+      width: 800px;
+      top: 1052px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 48px;
+    }
+    #end-area {
+      position: absolute;
+      left: 140px;
+      width: 800px;
+      top: 1122px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 30px;
+      opacity: 0.75;
+    }
+  </style>
+  <div id="root" data-composition-id="endcard" data-width="1080" data-height="1920">
+    <div id="end-bg"></div>
+    <div id="end-wipe"></div>
+    <img id="end-logo" src="assets/logo-ecoconso.png" alt="Eco Conso Habitat" />
+    <div id="end-tag">
+      <span class="ln"><span>Performances thermiques</span></span>
+      <span class="ln"><span>&amp; <em>économies d'énergie</em></span></span>
+    </div>
+    <div id="end-cta">Demandez votre devis gratuit</div>
+    <div id="end-phone">06 75 31 76 25</div>
+    <div id="end-area">Tourcoing · Nord &amp; Pas-de-Calais</div>
+  </div>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#end-bg", { yPercent: 100 }, { yPercent: 0, duration: 0.01 }, 0.45);
+      tl.fromTo("#end-wipe", { yPercent: 100 }, { yPercent: 0, duration: 0.45, ease: "power3.inOut" }, 0);
+      tl.to("#end-wipe", { yPercent: -100, duration: 0.45, ease: "power3.inOut" }, 0.5);
+      // The leaf grows out of the mark first, then the rest of the logo.
+      tl.fromTo("#end-logo", { clipPath: "circle(0% at 55% 22%)", scale: 0.88 }, { clipPath: "circle(80% at 55% 22%)", scale: 1, duration: 0.9, ease: "power3.out" }, 0.7);
+      tl.fromTo("#end-tag .ln > span", { yPercent: 110 }, { yPercent: 0, duration: 0.4, ease: "power3.out", stagger: 0.12 }, 1.5);
+      tl.fromTo("#end-cta", { opacity: 0, y: 40, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 4.9);
+      tl.fromTo("#end-phone", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 5.3);
+      tl.fromTo("#end-area", { opacity: 0 }, { opacity: 0.75, duration: 0.4, ease: "power2.out" }, 5.6);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["endcard"] = tl;
+    })();
+  </script>
+</template>

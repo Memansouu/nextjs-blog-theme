@@ -1,0 +1,168 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      font-family: "Inter", sans-serif;
+      color: #27334b;
+    }
+    .mask {
+      position: absolute;
+      overflow: hidden;
+    }
+    .mask > span {
+      display: inline-block;
+    }
+    #e-month {
+      left: 130px;
+      top: 300px;
+    }
+    #e-month span {
+      background: #8ab935;
+      color: #1b2436;
+      font-weight: 800;
+      font-size: 40px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 22px 10px;
+    }
+    #e-clock {
+      left: 130px;
+      top: 370px;
+    }
+    #e-clock span {
+      background: #27334b;
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 150px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      padding: 12px 28px 18px;
+    }
+    .lab {
+      left: 130px;
+      top: 556px;
+    }
+    .lab span {
+      background: #ffffff;
+      color: #27334b;
+      font-weight: 800;
+      font-size: 54px;
+      line-height: 1;
+      padding: 14px 26px 18px;
+    }
+    #e-proof {
+      position: absolute;
+      left: 130px;
+      top: 340px;
+      width: 760px;
+    }
+    #e-proof .ln {
+      display: block;
+      overflow: hidden;
+    }
+    #e-proof .ln > span {
+      display: inline-block;
+      background: #27334b;
+      color: #ffffff;
+      padding: 10px 26px 16px;
+      line-height: 1;
+    }
+    #e-proof .num {
+      color: #8ab935 !important;
+      font-weight: 900;
+      font-size: 150px;
+      letter-spacing: -0.03em;
+      white-space: pre;
+    }
+    #e-proof .sub {
+      font-weight: 700;
+      font-size: 46px;
+    }
+    #e-proof .row {
+      display: flex;
+      width: fit-content;
+      align-items: center;
+      gap: 18px;
+      margin-top: 22px;
+      font-weight: 800;
+      font-size: 44px;
+      background: #ffffff;
+      color: #27334b;
+      padding: 12px 26px 14px;
+    }
+    #e-proof .chip {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      background: #8ab935;
+      border-radius: 50%;
+    }
+  </style>
+  <div id="root" data-composition-id="titles" data-width="1080" data-height="1920">
+    <div id="e-month" class="mask clip" data-start="0" data-duration="18.25" data-track-index="0"><span id="e-month-txt">Janvier</span></div>
+    <div id="e-clock" class="mask clip" data-start="0" data-duration="18.25" data-track-index="0"><span id="e-time">06:45</span></div>
+    <div id="e-l1" class="mask lab clip" data-start="0" data-duration="3.3" data-track-index="1"><span>Matin d'hiver</span></div>
+    <div id="e-l2" class="mask lab clip" data-start="2.95" data-duration="5.15" data-track-index="1"><span>Pompe à chaleur air-eau</span></div>
+    <div id="e-l3" class="mask lab clip" data-start="7.75" data-duration="4.6" data-track-index="1"><span>Ballon thermodynamique</span></div>
+    <div id="e-l4" class="mask lab clip" data-start="13.6" data-duration="4.65" data-track-index="1"><span>Climatisation réversible</span></div>
+    <div id="e-proof" class="clip" data-start="18.3" data-duration="9.1" data-track-index="0">
+      <span class="ln"><span class="num">4,8 ★</span></span>
+      <span class="ln"><span class="sub">105 avis contrôlés</span></span>
+      <div class="row" id="e-row1"><span class="chip"></span>Artisan RGE QualiPAC</div>
+      <div class="row" id="e-row2"><span class="chip"></span>Garantie jusqu'à 10 ans</div>
+      <div class="row" id="e-row3"><span class="chip"></span>Intervention sous 48 h</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      // Displayed time: January morning, then July afternoon after the season change.
+      var WINTER = [[0, 6.75], [2.6, 6.95], [3.0, 7.0], [7.6, 7.2], [8.0, 7.5], [12.0, 7.75]];
+      var SUMMER = [[12.8, 15.0], [13.6, 15.0], [18.2, 15.4]];
+      function inOut(k) { return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; }
+      function curve(K, t) {
+        var i = 0;
+        while (i < K.length - 2 && t > K[i + 1][0]) i++;
+        var a = K[i], b = K[i + 1];
+        var k = Math.min(1, Math.max(0, (t - a[0]) / (b[0] - a[0])));
+        return a[1] + (b[1] - a[1]) * inOut(k);
+      }
+      var timeEl = document.getElementById("e-time");
+      var monthEl = document.getElementById("e-month-txt");
+      var clk = { t: 0 };
+      tl.fromTo(clk, { t: 0 }, {
+        t: 18.25, duration: 18.25, ease: "none",
+        onUpdate: function () {
+          var summer = clk.t >= 12.8;
+          var h = summer ? curve(SUMMER, clk.t) : curve(WINTER, clk.t);
+          var hh = Math.floor(h), mm = Math.floor(((h - hh) * 60) / 5) * 5;
+          timeEl.textContent = String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+          monthEl.textContent = summer ? "Juillet" : "Janvier";
+        },
+      }, 0);
+      // The season changes: month and time roll out and back in.
+      tl.to(["#e-month-txt", "#e-time"], { yPercent: -110, duration: 0.25, ease: "power2.in" }, 12.5);
+      tl.fromTo(["#e-month-txt", "#e-time"], { yPercent: 110 }, { yPercent: 0, duration: 0.35, ease: "power3.out", immediateRender: false }, 12.85);
+      tl.to(["#e-month-txt", "#e-time"], { yPercent: -110, duration: 0.25, ease: "power2.in" }, 17.95);
+
+      var labs = [["#e-l1", 0, 2.95], ["#e-l2", 2.95, 7.75], ["#e-l3", 7.75, 12.1], ["#e-l4", 13.6, 17.95]];
+      labs.forEach(function (c) {
+        var s = document.querySelector(c[0] + " span");
+        if (c[1] > 0) tl.fromTo(s, { yPercent: 110 }, { yPercent: 0, duration: 0.3, ease: "power3.out" }, c[1] + 0.2);
+        tl.fromTo(s, { yPercent: 0 }, { yPercent: -110, duration: 0.2, ease: "power2.in", immediateRender: false }, c[2]);
+      });
+
+      var spans = document.querySelectorAll("#e-proof .ln > span");
+      tl.fromTo(spans, { yPercent: 110 }, { yPercent: 0, duration: 0.38, ease: "power3.out", stagger: 0.08 }, 18.35);
+      tl.fromTo("#e-row1", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 20.4);
+      tl.fromTo("#e-row2", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 23.6);
+      tl.fromTo("#e-row3", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 25.0);
+      tl.to(spans, { yPercent: -110, duration: 0.24, ease: "power2.in", stagger: 0.04 }, 27.0);
+      tl.to(["#e-row1", "#e-row2", "#e-row3"], { opacity: 0, duration: 0.2 }, 27.0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["titles"] = tl;
+    })();
+  </script>
+</template>
