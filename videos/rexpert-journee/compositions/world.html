@@ -520,30 +520,42 @@
       }
     }
 
+    // Home battery: a tall white wall cabinet with a five-step charge indicator.
     const battery = new THREE.Group();
     const batMat = std(0xf4f4f2, 0.35, 0.05, { emissive: 0x79ffbb, emissiveIntensity: 0 });
-    const batBody = rbox(0.66, 1.2, 0.2, batMat, 0.05);
-    batBody.position.y = 0.6;
-    const batBand = box(0.66, 0.08, 0.205, anthracite);
-    batBand.position.y = 1.05;
-    const gaugeBack = box(0.06, 0.82, 0.01, std(0x9aa09d, 0.6));
-    gaugeBack.position.set(0.22, 0.52, 0.105);
-    const gauge = box(0.05, 0.8, 0.02, mint);
-    gauge.geometry.translate(0, 0.4, 0);
-    gauge.position.set(0.22, 0.12, 0.11);
-    battery.add(batBody, batBand, gaugeBack, gauge);
-    // On the side wall, facing the camera's arc, so its charge bar reads.
+    const batBody = rbox(0.8, 1.45, 0.24, batMat, 0.06);
+    batBody.position.y = 0.73;
+    const batBand = box(0.8, 0.12, 0.245, anthracite);
+    batBand.position.y = 1.32;
+    battery.add(batBody, batBand);
+    const barOff = std(0xc9ccca, 0.5);
+    const barOn = new THREE.MeshBasicMaterial({ color: 0x79ffbb });
+    const bars = [];
+    for (let i = 0; i < 5; i++) {
+      const b = box(0.46, 0.08, 0.02, barOff);
+      b.position.set(0, 0.32 + i * 0.16, 0.125);
+      battery.add(b);
+      bars.push(b);
+    }
     battery.rotation.y = Math.PI / 2;
-    battery.position.set(HERO.x + HW / 2 + 0.11, 0.3, HERO.z + 1.0);
+    battery.position.set(HERO.x + HW / 2 + 0.12, 0.18, HERO.z + 1.0);
     scene.add(battery);
 
+    // EV charger: a dark pedestal by the drive, light ring, screen, cable holstered until the car arrives.
     const charger = new THREE.Group();
-    const post = rbox(0.26, 1.2, 0.2, std(0x012b26, 0.35, 0.3), 0.05);
-    post.position.y = 0.6;
-    const face = box(0.02, 0.36, 0.12, mint);
-    face.position.set(0.135, 0.88, 0);
-    charger.add(post, face);
-    charger.position.set(2.25, 0, 1.0);
+    const post = rbox(0.3, 1.3, 0.24, std(0x1d2326, 0.35, 0.4), 0.06);
+    post.position.y = 0.65;
+    const screen = box(0.2, 0.14, 0.02, std(0x0a0d0f, 0.05, 0.6, { emissive: 0x79ffbb, emissiveIntensity: 0.15 }));
+    screen.position.set(0, 1.08, 0.125);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x79ffbb, transparent: true, opacity: 0.35 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.018, 10, 40), ringMat);
+    ring.position.set(0, 0.78, 0.125);
+    const coil = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.03, 10, 30), std(0x111111, 0.5));
+    coil.rotation.y = Math.PI / 2;
+    coil.position.set(-0.17, 0.55, 0.02);
+    charger.add(post, screen, ring, coil);
+    // Across the drive from the battery: screen and ring face the street, cable on the car's side.
+    charger.position.set(5.25, 0, 1.0);
     scene.add(charger);
 
     const CAR_PARK = new THREE.Vector3(3.7, 0, 1.6);
@@ -574,18 +586,16 @@
     }
     const chargeLed = new THREE.MeshBasicMaterial({ color: 0x79ffbb, transparent: true, opacity: 0.2 });
     const led = box(0.04, 0.06, 0.3, chargeLed);
-    led.position.set(-0.94, 0.8, -1.0);
+    led.position.set(-0.94, 0.8, 0.3);
     car.add(led);
     car.rotation.y = Math.PI;
     scene.add(car);
-    const plugCable = new THREE.Mesh(
-      new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-        new THREE.Vector3(2.39, 0.88, 1.0),
-        new THREE.Vector3(2.6, 0.08, 1.3),
-        new THREE.Vector3(CAR_PARK.x - 0.95, 0.75, CAR_PARK.z + 1.0),
-      ]), 40, 0.035, 8, false),
-      std(0x111111, 0.5),
-    );
+    const plugCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(5.1, 0.6, 1.0),
+      new THREE.Vector3(4.88, 0.08, 1.15),
+      new THREE.Vector3(4.64, 0.84, 1.3),
+    ]);
+    const plugCable = new THREE.Mesh(new THREE.TubeGeometry(plugCurve, 40, 0.035, 8, false), std(0x111111, 0.5));
     plugCable.visible = false;
     scene.add(plugCable);
 
@@ -608,12 +618,13 @@
 
     // Energy: arcs of light that draw from the source to the device, pulses running along them.
     const v = (x, y, z) => new THREE.Vector3(x, y, z);
-    const BAT = v(HERO.x + HW / 2 + 0.22, 1.1, HERO.z + 1.0);
+    const BAT = v(HERO.x + HW / 2 + 0.26, 1.0, HERO.z + 1.0);
     const arcs = {
       house: new THREE.QuadraticBezierCurve3(v(-0.6, 5.8, 0.6), v(1.2, 5.6, 3.8), v(-0.1, 1.45, HERO.z + HD / 2 + 0.06)),
       battery: new THREE.QuadraticBezierCurve3(v(-0.4, 5.8, 0.2), v(3.0, 5.2, 1.4), BAT.clone()),
       ac: new THREE.QuadraticBezierCurve3(v(-0.4, 5.8, -0.6), v(3.1, 4.4, -0.9), v(HERO.x + HW / 2 + 0.45, 0.9, HERO.z - 0.95)),
-      car: new THREE.QuadraticBezierCurve3(BAT.clone(), v(3.2, 2.8, 1.0), v(CAR_PARK.x - 0.55, 1.3, CAR_PARK.z + 0.2)),
+      car: new THREE.QuadraticBezierCurve3(BAT.clone(), v(3.6, 3.4, 0.6), v(5.25, 1.2, 1.15)),
+      plug: plugCurve,
       night: new THREE.QuadraticBezierCurve3(BAT.clone(), v(1.8, 3.0, 2.8), v(0.3, 1.45, HERO.z + HD / 2 + 0.06)),
     };
     const beamVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
@@ -669,14 +680,32 @@
 
     // ---------- camera: eye of a photographer on a crane, slow arc ----------
     const halfV = THREE.MathUtils.degToRad(camera.fov / 2);
+    // The camera leans toward whichever device the story is about.
+    const FOCUS = [
+      { t: 0, x: 0.6, y: 2.3, z: 0.9, w: 13.5 },
+      { t: 3.0, x: 0.4, y: 2.6, z: 0.9, w: 11.6 },
+      { t: 7.4, x: 1.5, y: 1.5, z: 0.9, w: 8.8 },
+      { t: 10.4, x: 1.2, y: 1.8, z: 0.0, w: 10.0 },
+      { t: 14.9, x: 3.6, y: 1.3, z: 1.4, w: 10.0 },
+      { t: 17.8, x: 0.8, y: 2.1, z: 1.0, w: 11.2 },
+      { t: 21.5, x: 0.6, y: 2.3, z: 0.9, w: 12.6 },
+      { t: 26.6, x: 0.6, y: 2.3, z: 0.9, w: 13.2 },
+    ];
+    function focusAt(t) {
+      let i = 0;
+      while (i < FOCUS.length - 2 && t > FOCUS[i + 1].t) i++;
+      const a = FOCUS[i], b = FOCUS[i + 1];
+      const k = inOut(seg(t, a.t, a.t + Math.min(1.6, b.t - a.t)));
+      return { x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), z: lerp(a.z, b.z, k), w: lerp(a.w, b.w, k) };
+    }
     function placeCamera(t) {
       const k = inOut(seg(t, 0, 26.6));
       const az = THREE.MathUtils.degToRad(lerp(22, 52, k));
       const el = THREE.MathUtils.degToRad(lerp(17, 15, k));
-      const w = lerp(13.5, 11.2, outCubic(seg(t, 0, 10))) + lerp(0, 1.6, seg(t, 20, 26.6));
-      const target = new THREE.Vector3(0.6, 2.3, 0.9);
+      const fc = focusAt(t);
+      const target = new THREE.Vector3(fc.x, fc.y, fc.z);
       const hw = Math.atan(Math.tan(halfV) * (W / H));
-      const dist = w / 2 / Math.tan(hw);
+      const dist = fc.w / 2 / Math.tan(hw);
       const dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
       camera.position.copy(target).addScaledVector(dir, dist);
       camera.lookAt(target);
@@ -721,14 +750,20 @@
       const fHouse = flow("house", t, 2.9, 6.5);
       const fBat = flow("battery", t, 6.9, 9.7);
       const fAc = flow("ac", t, 10.1, 13.9);
-      const fCar = flow("car", t, 15.6, 17.4);
+      flow("car", t, 15.6, 17.4);
+      const fCar = flow("plug", t, 16.1, 17.4);
       const fNight = flow("night", t, 18.2, 26.6);
       // Each device answers the energy it receives.
       const beat = 0.5 + 0.5 * Math.sin(t * 6);
-      batMat.emissiveIntensity = 0.25 * fBat * beat + 0.15 * (fCar + fNight) * beat;
+      batMat.emissiveIntensity = 0.2 * fBat * beat;
+      ringMat.opacity = 0.35 + 0.65 * Math.max(fCar, seg(t, 15.5, 15.8) * 0.4) * beat;
+      coil.visible = t < 15.5;
       acMat.emissiveIntensity = 0.2 * fAc * beat;
 
-      gauge.scale.y = Math.max(0.001, lerp(0.25, 1.0, inOut(seg(t, 7.1, 9.6))) - lerp(0, 0.35, seg(t, 18.4, 26.6)) - lerp(0, 0.15, seg(t, 15.6, 17.4)));
+      // Charge level: fills at noon, gives some to the car, then carries the house through the night.
+      const level = clamp(lerp(0.4, 1.0, inOut(seg(t, 7.1, 9.6))) - 0.2 * seg(t, 15.6, 17.4) - 0.4 * seg(t, 18.4, 26.6), 0, 1);
+      const nLit = Math.round(level * 5);
+      bars.forEach((b, i) => (b.material = i < nLit ? barOn : barOff));
       fan.rotation.x = t * 2 + 10 * clamp(t - 10.2, 0, 4.2);
 
       const ca = seg(t, 14.4, 15.4);
