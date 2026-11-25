@@ -377,7 +377,7 @@
   "snapshots": {
     "latest": {
       "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
-      "id": "63ed29a5-e57d-49bb-88fc-8741057d97d7-2"
+      "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-6"
     },
     "revisions": {
       "e2726410-a493-4c40-aa8b-9df48bbf5b4c": [],
@@ -387,8 +387,28 @@
       "b453198c-dead-4edc-8f13-772d288e3a39": [
         {
           "scope": "full",
-          "id": "63ed29a5-e57d-49bb-88fc-8741057d97d7-0",
-          "image": "/home/user/nextjs-blog-theme/videos/snapR/frame-00-at-8.5s.png",
+          "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-0",
+          "image": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/apercu/frame-00-at-1.5s.png",
+          "time": 1.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1795602270355,
+          "contentHash": "3f7561ba97d0ecca21494912c0e9347f1a271cdbfb04726cc34835ad66f27b96",
+          "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
+          "inputFingerprint": "e6ed56c126350f73efc8fbfd172117dbfa32f525948c31151580b02b3aca80bc",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-1",
+          "image": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/apercu/frame-01-at-8.5s.png",
           "time": 8.5,
           "metadata": {
             "width": 1080,
@@ -398,8 +418,8 @@
             "warnings": [],
             "partial": false
           },
-          "createdAt": 1795601772907,
-          "contentHash": "2ae545e6fbb099433e4dbd707c74dfe4e7bb5ecd95affb577cab8e0a1996b086",
+          "createdAt": 1795602270355,
+          "contentHash": "1cb903a53d17fe13cd4e0e28921a58346f970036ee004efdf3c89b68c40d6a50",
           "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
           "inputFingerprint": "e6ed56c126350f73efc8fbfd172117dbfa32f525948c31151580b02b3aca80bc",
           "inputScope": "local-project-files",
@@ -407,8 +427,48 @@
         },
         {
           "scope": "full",
-          "id": "63ed29a5-e57d-49bb-88fc-8741057d97d7-1",
-          "image": "/home/user/nextjs-blog-theme/videos/snapR/frame-01-at-20.5s.png",
+          "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-2",
+          "image": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/apercu/frame-02-at-12s.png",
+          "time": 12,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1795602270355,
+          "contentHash": "23901d7c0314541a95355ea761ce4cc23975405d256f43ed58f8251cb4fe8d8a",
+          "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
+          "inputFingerprint": "e6ed56c126350f73efc8fbfd172117dbfa32f525948c31151580b02b3aca80bc",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-3",
+          "image": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/apercu/frame-03-at-16.5s.png",
+          "time": 16.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1795602270355,
+          "contentHash": "1726faca688ea41f3f6819a6b1e1bb151e8bed80b5ad2fb34521437ba6e80988",
+          "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
+          "inputFingerprint": "e6ed56c126350f73efc8fbfd172117dbfa32f525948c31151580b02b3aca80bc",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-4",
+          "image": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/apercu/frame-04-at-20.5s.png",
           "time": 20.5,
           "metadata": {
             "width": 1080,
@@ -418,8 +478,8 @@
             "warnings": [],
             "partial": false
           },
-          "createdAt": 1795601772908,
-          "contentHash": "be1a638dca997f374b36c8185a51eb9ae33c917f70d4ef8c2b98c843ab914b5a",
+          "createdAt": 1795602270355,
+          "contentHash": "ca5eddd23c3d8a99c04f19011c828f8df26ccb5cf0c3fd20cd5be21091f35dde",
           "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
           "inputFingerprint": "e6ed56c126350f73efc8fbfd172117dbfa32f525948c31151580b02b3aca80bc",
           "inputScope": "local-project-files",
@@ -427,8 +487,28 @@
         },
         {
           "scope": "full",
-          "id": "63ed29a5-e57d-49bb-88fc-8741057d97d7-2",
-          "image": "/home/user/nextjs-blog-theme/videos/snapR/frame-02-at-32.75s.png",
+          "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-5",
+          "image": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/apercu/frame-05-at-23.5s.png",
+          "time": 23.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1795602270355,
+          "contentHash": "438a270a5ac4ba6eb8be428984ec1902e701b3aeaba5fe57cf615b4a4c6dab81",
+          "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
+          "inputFingerprint": "e6ed56c126350f73efc8fbfd172117dbfa32f525948c31151580b02b3aca80bc",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "bbaf410d-60b3-4cc8-bf58-0e70dcc2812c-6",
+          "image": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/apercu/frame-06-at-32.75s.png",
           "time": 32.75,
           "metadata": {
             "width": 1080,
@@ -438,7 +518,7 @@
             "warnings": [],
             "partial": false
           },
-          "createdAt": 1795601772908,
+          "createdAt": 1795602270355,
           "contentHash": "761b6278ed2f572fd1871b5f868fcf4aa4fff1ce604f453ea28d6a4e1fc215f9",
           "revision": "b453198c-dead-4edc-8f13-772d288e3a39",
           "inputFingerprint": "e6ed56c126350f73efc8fbfd172117dbfa32f525948c31151580b02b3aca80bc",
