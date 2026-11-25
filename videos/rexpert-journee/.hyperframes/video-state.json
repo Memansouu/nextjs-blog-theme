@@ -528,5 +528,18 @@
       ]
     },
     "unversioned": []
-  }
+  },
+  "renders": {
+    "latest": {
+      "id": "a07ba459-c6ee-4b9b-a1e7-8b9413443b96",
+      "completedAt": 1795604307160,
+      "output": "/home/user/nextjs-blog-theme/videos/rexpert-journee/renders/rexpert-journee-soleil-9x16.mp4",
+      "status": "completed",
+      "revision": "b453198c-dead-4edc-8f13-772d288e3a39"
+    },
+    "retainedRevisions": [
+      "b453198c-dead-4edc-8f13-772d288e3a39"
+    ]
+  },
+  "pendingArtifactCleanup": []
 }
