@@ -771,15 +771,15 @@
   },
   "renders": {
     "latest": {
-      "id": "139d0335-3225-4d9b-8ddd-302775cd81a8",
-      "completedAt": 1795613153904,
+      "id": "2ca1b3af-7928-4c6d-82fb-6f65a8ba14e1",
+      "completedAt": 1795616646320,
       "output": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/journee-raw.mp4",
       "status": "completed",
-      "revision": "7dbf93e4-d070-488a-bf42-c03d6e357787"
+      "revision": "bcdd5345-083c-4c9b-a176-50f57786db89"
     },
     "retainedRevisions": [
-      "7dbf93e4-d070-488a-bf42-c03d6e357787",
-      "b453198c-dead-4edc-8f13-772d288e3a39"
+      "bcdd5345-083c-4c9b-a176-50f57786db89",
+      "7dbf93e4-d070-488a-bf42-c03d6e357787"
     ]
   },
   "pendingArtifactCleanup": []
