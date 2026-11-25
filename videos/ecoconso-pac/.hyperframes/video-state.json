@@ -253,15 +253,14 @@
   },
   "checks": {
     "latest": {
-      "revision": "7218b410-a6a5-43f9-b036-dc06507f18eb",
-      "id": "0bb7854d-fe0d-4dfb-966d-ab0efc8732ad"
+      "revision": null,
+      "id": "8c3ef82b-21c8-42f4-ae65-b4e990b6219d"
     },
     "revisions": {
       "0b9a5c17-d57f-46f7-a1e0-902ef882d5f5": [
         {
           "id": "83425b52-0868-4c81-b677-64008592965e",
           "scope": "project",
-          "report": "/home/user/nextjs-blog-theme/videos/ecoconso-pac/.hyperframes/artifacts/checks/83425b52-0868-4c81-b677-64008592965e.json",
           "metadata": {
             "ok": true,
             "browserSkipped": false,
@@ -291,14 +290,15 @@
           "revision": "0b9a5c17-d57f-46f7-a1e0-902ef882d5f5",
           "inputFingerprint": "368498a3bd30cb6716393b6ed9c6a90e0d6a3b2bc4188bc5f83587fdbd06eae3",
           "inputScope": "local-project-files",
-          "attribution": "recorded-revision"
+          "attribution": "recorded-revision",
+          "status": "cleaned",
+          "cleanedAfterRender": "d0ae0a17-a5d4-4ed6-a24c-9c69c39c24a2"
         }
       ],
       "7218b410-a6a5-43f9-b036-dc06507f18eb": [
         {
           "id": "0bb7854d-fe0d-4dfb-966d-ab0efc8732ad",
           "scope": "project",
-          "report": "/home/user/nextjs-blog-theme/videos/ecoconso-pac/.hyperframes/artifacts/checks/0bb7854d-fe0d-4dfb-966d-ab0efc8732ad.json",
           "metadata": {
             "ok": true,
             "browserSkipped": false,
@@ -328,7 +328,9 @@
           "revision": "7218b410-a6a5-43f9-b036-dc06507f18eb",
           "inputFingerprint": "ce4ce47c458fe93409a96b95b9e057be881f2b860b225b78763b35630d0cc206",
           "inputScope": "local-project-files",
-          "attribution": "recorded-revision"
+          "attribution": "recorded-revision",
+          "status": "cleaned",
+          "cleanedAfterRender": "d0ae0a17-a5d4-4ed6-a24c-9c69c39c24a2"
         }
       ]
     },
@@ -522,5 +524,18 @@
       ]
     },
     "unversioned": []
-  }
+  },
+  "renders": {
+    "latest": {
+      "id": "d0ae0a17-a5d4-4ed6-a24c-9c69c39c24a2",
+      "completedAt": 1795622180802,
+      "output": "/tmp/claude-0/-home-user-nextjs-blog-theme/c9cca92f-2061-5888-897f-3d125cd9a0c2/scratchpad/eco-raw.mp4",
+      "status": "completed",
+      "revision": "3caf9d3b-9fa8-4855-81b6-535ffa6502c6"
+    },
+    "retainedRevisions": [
+      "3caf9d3b-9fa8-4855-81b6-535ffa6502c6"
+    ]
+  },
+  "pendingArtifactCleanup": []
 }
